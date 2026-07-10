@@ -32,6 +32,8 @@
 
 **ShadowVendor** is a Python tool for network administrators and cybersecurity professionals to analyze and visualize the vendor distribution of devices on a network. It processes MAC address tables and ARP data from a wide range of network devices (including Cisco, HP/Aruba, Juniper, Extreme, Brocade, and more), providing detailed insights into your network's composition.
 
+**Runs on your machine:** ShadowVendor is not a cloud service — your network exports and full MAC addresses are processed locally and never uploaded; use `--offline` for zero external network calls.
+
 When integrated with SIEMs (Elastic, Splunk, QRadar, etc.), ShadowVendor transforms from a static inventory tool into a **posture-change sensor** that enables proactive security monitoring and incident response.
 
 ---
