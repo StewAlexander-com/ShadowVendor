@@ -17,6 +17,8 @@
 
 **Try it in 60 seconds:** `python3 ShadowVendor.py tests/data/test-mac-table.txt` (then open `output/vendor_distribution.html` in your browser) → See dashboards without touching your own network data
 
+**Privacy & local execution:** ShadowVendor processes your files entirely on your machine. Input files and full MAC addresses are never uploaded. In default mode, uncached vendor lookups send only OUI prefixes (first 3 octets) to external APIs. Use `--offline` for fully air-gapped operation with zero external network calls.
+
 ## 👥 Who is This For?
 
 - **SOC analysts**: Detect new vendors and track device changes for security monitoring
@@ -586,12 +588,14 @@ ShadowVendor is used in production environments for network monitoring, security
 
 ShadowVendor is designed with security in mind:
 - **Read-only operation**: ShadowVendor reads text exports only and does not make changes to network devices
-- **Offline mode**: `--offline` flag enables air-gapped network analysis without external API calls
-- **No network access required**: All vendor lookups use local OUI cache; external API is optional
+- **Local-first processing**: Input files and full MAC addresses never leave your machine
+- **Default mode**: Uncached vendor lookups send only OUI prefixes (first 3 octets) to external APIs; all other processing stays local
+- **Offline mode**: `--offline` flag enables air-gapped analysis with zero external network calls
 - **Safe for production**: No device modifications, no credentials stored, no persistent connections
+- **HTML dashboards**: Opening generated HTML may load Plotly from a CDN in your browser
 - **Code security scanning**: Regular security scans with Bandit to detect potential vulnerabilities and code execution risks
 
-For security teams evaluating the tool: ShadowVendor processes static text files and generates reports. It does not connect to network devices, modify configurations, or store sensitive data beyond the OUI cache (public IEEE data). The codebase is regularly scanned for security issues using Bandit as part of the development and testing process.
+For security teams evaluating the tool: ShadowVendor processes static text files and generates reports locally. It does not connect to network devices or modify configurations. For full network and API behavior details, see [ADVANCED.md — Network & API Behavior](ADVANCED.md#network--api-behavior). To report vulnerabilities in ShadowVendor, see [SECURITY.md](SECURITY.md).
 
 ## 🔧 Advanced Topics
 
@@ -769,7 +773,7 @@ ShadowVendor is an open-source project, and we welcome contributions from the co
 
 - **Report bugs or request features**: Open an [issue on GitHub](https://github.com/StewAlexander-com/ShadowVendor/issues)
 - **Ask questions**: Open a GitHub issue with the "question" label for general questions and use cases
-- **Security issues**: Please report security vulnerabilities privately through GitHub's security advisory system
+- **Security vulnerabilities**: See [SECURITY.md](SECURITY.md) — report privately via [GitHub Security Advisories](https://github.com/StewAlexander-com/ShadowVendor/security/advisories/new)
 
 ### Contributing Success Stories
 
@@ -796,7 +800,7 @@ Contributions are welcome! To contribute:
 
 ## 📄 License
 
-MIT License
+This project is licensed under the [MIT License](LICENSE).
 
 ## 👤 Author
 
