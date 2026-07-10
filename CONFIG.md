@@ -4,6 +4,8 @@
 
 This document provides detailed configuration examples for ShadowVendor. For a quick overview, see the [Configuration section](README.md#configuration) in the README.
 
+> **Local execution:** Configuration is read from local files and environment variables only — nothing is sent to a remote config service. ShadowVendor processes input on your machine; set `offline = true` (or `SHADOWVENDOR_OFFLINE=true`) for zero external network calls in automated jobs. See [README — Security Considerations](README.md#-security-considerations) for full privacy details.
+
 ## 📑 Table of Contents
 
 - [Configuration File Locations](#configuration-file-locations)
