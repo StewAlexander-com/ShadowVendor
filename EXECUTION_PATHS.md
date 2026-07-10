@@ -4,6 +4,10 @@
 
 This document maps all ways users can run ShadowVendor, the execution flow for each path, and test coverage.
 
+## 🔒 Local Execution & Data Flow
+
+> **All execution paths run locally on your machine** — there is no cloud backend and input files are never uploaded. Full MAC addresses stay on-host; default mode may send only OUI prefixes (first 3 octets) to external APIs on cache miss. Use `--offline` (CLI/config) or `offline=True` (Python API) for zero external network calls on any path.
+
 ## 📊 Execution Paths Overview
 
 ```
@@ -296,4 +300,5 @@ Do you need advanced features (offline, SIEM, drift)?
 - **Python API** provides same functionality as standalone script but programmatically
 - **Configuration files** reduce CLI flag churn for recurring jobs
 - All paths use the same core processing pipeline for consistency
+- All paths write outputs locally (typically under `output/`); none send input data to a remote service. See [README — Security Considerations](README.md#-security-considerations) for full privacy details.
 
