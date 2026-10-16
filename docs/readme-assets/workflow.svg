@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="270" viewBox="0 0 1000 270" role="img" aria-labelledby="title desc">
+<title id="title">Export. Enrich. Review.</title><desc id="desc">Save network text output, normalize MAC addresses and enrich from vendor prefixes, then inspect local reports and compare or export results.</desc>
+<rect x="0" y="0" width="1000" height="270" rx="16" fill="#131e26" stroke="#131e26"/>
+<text x="28" y="38" fill="#d9bd8e" font-family="Arial, Helvetica, sans-serif" font-size="15" letter-spacing="1">FROM SAVED TEXT TO A USEFUL QUESTION</text>
+<text x="28" y="97" fill="#d9bd8e" font-family="Arial, Helvetica, sans-serif" font-size="18" >01</text>
+<text x="28" y="143" fill="#f7f3e9" font-family="Georgia, Times New Roman, serif" font-size="34" >Export</text>
+<text x="28" y="179" fill="#bfccd3" font-family="Arial, Helvetica, sans-serif" font-size="20" >Save a MAC table,</text>
+<text x="28" y="204" fill="#bfccd3" font-family="Arial, Helvetica, sans-serif" font-size="20" >ARP table, or MAC list.</text>
+<path d="M84 90L316 90" fill="none" stroke="#b9dcd6" stroke-width="2"/><path d="M309 84l7 6-7 6" fill="none" stroke="#b9dcd6" stroke-width="2"/>
+<text x="356" y="97" fill="#d9bd8e" font-family="Arial, Helvetica, sans-serif" font-size="18" >02</text>
+<text x="356" y="143" fill="#f7f3e9" font-family="Georgia, Times New Roman, serif" font-size="34" >Enrich</text>
+<text x="356" y="179" fill="#bfccd3" font-family="Arial, Helvetica, sans-serif" font-size="20" >Normalize addresses.</text>
+<text x="356" y="204" fill="#bfccd3" font-family="Arial, Helvetica, sans-serif" font-size="20" >Look up vendor prefixes.</text>
+<path d="M412 90L644 90" fill="none" stroke="#b9dcd6" stroke-width="2"/><path d="M637 84l7 6-7 6" fill="none" stroke="#b9dcd6" stroke-width="2"/>
+<text x="684" y="97" fill="#d9bd8e" font-family="Arial, Helvetica, sans-serif" font-size="18" >03</text>
+<text x="684" y="143" fill="#f7f3e9" font-family="Georgia, Times New Roman, serif" font-size="34" >Review</text>
+<text x="684" y="179" fill="#bfccd3" font-family="Arial, Helvetica, sans-serif" font-size="20" >Inspect charts and CSVs.</text>
+<text x="684" y="204" fill="#bfccd3" font-family="Arial, Helvetica, sans-serif" font-size="20" >Compare or export results.</text>
+</svg>

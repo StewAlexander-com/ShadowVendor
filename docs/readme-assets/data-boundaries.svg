@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="505" viewBox="0 0 1000 505" role="img" aria-labelledby="title desc">
+<title id="title">Local reports, explicit network boundaries</title><desc id="desc">Saved exports are processed locally with a working cache. Online cache misses may send an OUI prefix to MACVendors or MACLookup; offline mode blocks that lookup. Opening HTML independently loads Plotly from a CDN. CSV and text reports need no browser script.</desc>
+<rect x="0" y="0" width="1000" height="505" rx="16" fill="#131e26" stroke="#131e26"/>
+<text x="28" y="38" fill="#d9bd8e" font-family="Arial, Helvetica, sans-serif" font-size="17" letter-spacing="1.5">FOLLOW THE DATA</text>
+<rect x="24" y="65" width="952" height="194" rx="12" fill="#1e2d36" stroke="#354953"/>
+<text x="44" y="96" fill="#b9dcd6" font-family="Arial, Helvetica, sans-serif" font-size="14" letter-spacing="1.4">ON YOUR MACHINE</text>
+<text x="48" y="135" fill="#d9bd8e" font-family="Arial, Helvetica, sans-serif" font-size="16" >01</text>
+<text x="48" y="174" fill="#f7f3e9" font-family="Georgia, Times New Roman, serif" font-size="29" >Saved export</text>
+<text x="48" y="215" fill="#bfccd3" font-family="Arial, Helvetica, sans-serif" font-size="19" >MAC / ARP text</text>
+<text x="350" y="135" fill="#d9bd8e" font-family="Arial, Helvetica, sans-serif" font-size="16" >02</text>
+<text x="350" y="174" fill="#f7f3e9" font-family="Georgia, Times New Roman, serif" font-size="29" >Vendor lookup</text>
+<text x="350" y="215" fill="#bfccd3" font-family="Arial, Helvetica, sans-serif" font-size="19" >Working OUI cache</text>
+<text x="682" y="135" fill="#d9bd8e" font-family="Arial, Helvetica, sans-serif" font-size="16" >03</text>
+<text x="682" y="174" fill="#f7f3e9" font-family="Georgia, Times New Roman, serif" font-size="29" >Local reports</text>
+<text x="682" y="215" fill="#bfccd3" font-family="Arial, Helvetica, sans-serif" font-size="19" >CSV · text · HTML</text>
+<path d="M230 163L316 163" fill="none" stroke="#b9dcd6" stroke-width="2"/><path d="M309 157l7 6-7 6" fill="none" stroke="#b9dcd6" stroke-width="2"/>
+<path d="M558 163L648 163" fill="none" stroke="#b9dcd6" stroke-width="2"/><path d="M641 157l7 6-7 6" fill="none" stroke="#b9dcd6" stroke-width="2"/>
+<path d="M478 235L478 272" fill="none" stroke="#d9bd8e" stroke-width="2" stroke-dasharray="6 6"/>
+<path d="M478 306L478 330" fill="none" stroke="#d9bd8e" stroke-width="2" stroke-dasharray="6 6"/><path d="M472 323l6 7 6-7" fill="none" stroke="#d9bd8e" stroke-width="2"/>
+<text x="478" y="294" fill="#d9bd8e" font-family="Arial, Helvetica, sans-serif" font-size="17" text-anchor="middle">Online cache miss: OUI only</text>
+<rect x="270" y="332" width="366" height="118" rx="12" fill="#1e2d36" stroke="#354953"/>
+<text x="290" y="369" fill="#f7f3e9" font-family="Georgia, Times New Roman, serif" font-size="23" >MACVendors / MACLookup</text>
+<text x="290" y="412" fill="#bfccd3" font-family="Arial, Helvetica, sans-serif" font-size="18" >--offline blocks this lookup.</text>
+<path d="M822 235L822 272" fill="none" stroke="#d9bd8e" stroke-width="2" stroke-dasharray="6 6"/>
+<path d="M822 306L822 330" fill="none" stroke="#d9bd8e" stroke-width="2" stroke-dasharray="6 6"/><path d="M816 323l6 7 6-7" fill="none" stroke="#d9bd8e" stroke-width="2"/>
+<text x="822" y="294" fill="#d9bd8e" font-family="Arial, Helvetica, sans-serif" font-size="17" text-anchor="middle">Open HTML: script request</text>
+<rect x="654" y="332" width="322" height="118" rx="12" fill="#1e2d36" stroke="#354953"/>
+<text x="674" y="369" fill="#f7f3e9" font-family="Georgia, Times New Roman, serif" font-size="26" >Plotly CDN</text>
+<text x="674" y="412" fill="#bfccd3" font-family="Arial, Helvetica, sans-serif" font-size="18" >Browser loads chart code.</text>
+<text x="28" y="483" fill="#bfccd3" font-family="Arial, Helvetica, sans-serif" font-size="18" >CSV and text reports remain readable without the browser’s Plotly dependency.</text>
+</svg>

@@ -1,0 +1,14 @@
+Vlan    Mac Address       Type        Ports
+----    -----------       ----        -----
+10      001b.5400.0001     DYNAMIC     Gi1/0/1
+10      001b.5400.0002     DYNAMIC     Gi1/0/2
+20      001b.5400.0003     DYNAMIC     Gi1/0/3
+20      001a.a000.0001     DYNAMIC     Gi1/0/4
+20      001a.a000.0002     DYNAMIC     Gi1/0/5
+30      001a.a000.0003     DYNAMIC     Gi1/0/6
+30      001b.6300.0001     DYNAMIC     Gi1/0/7
+30      001b.6300.0002     DYNAMIC     Gi1/0/8
+40      000c.2900.0001     DYNAMIC     Gi1/0/9
+40      000c.2900.0002     DYNAMIC     Gi1/0/10
+40      001b.2100.0001     DYNAMIC     Gi1/0/11
+10      001b.2100.0002     DYNAMIC     Gi1/0/12

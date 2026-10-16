@@ -1,0 +1,114 @@
+# ShadowVendor usage reference
+
+[← Back to the README](../README.md)
+
+This reference describes the repository’s standalone `ShadowVendor.py` workflow. Examples assume you are in the repository root with dependencies installed. The README recommends Python 3.11+; existing package metadata disagrees on the older minimum (`setup.py`: 3.9, `pyproject.toml`: 3.8). This documentation update does not change packaging or claim those older versions were tested.
+
+## Choose an entry point
+
+| Entry point | Behavior |
+| --- | --- |
+| `python ShadowVendor.py INPUT` | Full CLI: offline mode, history, drift, SIEM export, configuration |
+| `shadowvendor INPUT` or `python -m shadowvendor INPUT` | Basic analysis; no advanced CLI flags |
+| `from shadowvendor import analyze_file` | Python API with keyword options; inspect its returned paths |
+
+Install the package with `python -m pip install -e .` if you need the `shadowvendor` command. The README’s direct-script walkthrough only needs `requirements.txt`.
+
+The API and CLI use different parsing and output paths. Currently, API standard reports are nested under `<output_dir>/output/`, while SIEM exports are written relative to the process working directory. Do not assume that every path returned by an API call with `siem_export=True` identifies the actual export location. Prefer the standalone script for the documented combined workflow.
+
+## Input shapes
+
+Use UTF-8 text. The script detects the shape from the opening lines; avoid leading blank lines or switch prompts before the data. The included [synthetic MAC table](examples/mac-table.txt) is a reproducible example.
+
+**MAC list** — one address per line, using colon, hyphen, dotted, or compact notation:
+
+```text
+00:1B:54:00:00:01
+00-1A-A0-00-00-01
+001b.6300.0001
+000c29000001
+```
+
+**MAC table** — VLAN first, MAC second, port last:
+
+```text
+Vlan    Mac Address       Type        Ports
+----    -----------       ----        -----
+10      001b.5400.0001     DYNAMIC     Gi1/0/1
+20      001a.a000.0001     DYNAMIC     Gi1/0/2
+```
+
+**ARP table** — the script recognizes Cisco-style `Protocol` / `Internet` rows:
+
+```text
+Protocol  Address       Age (min)  Hardware Addr   Type  Interface
+Internet  192.0.2.1      -          001b.5400.0001  ARPA  Vlan10
+```
+
+A matching layout matters more than the switch brand. Port extraction in the standalone script recognizes `Gi`, `Fa`, `Te`, `Eth`, and integer port labels. Other labels can become `N/A`, even if the MAC and VLAN are parsed. Confirm the device CSV before relying on a port report. The tool does not validate an entire switch export against every vendor’s command syntax.
+
+Repeated MAC addresses overwrite their earlier entry; a multi-VLAN or multi-port appearance is not retained as separate observations. Counts therefore mean unique parsed MAC addresses, not an authenticated count of physical devices.
+
+## CLI options
+
+Run `python ShadowVendor.py --help` for the installed script’s help.
+
+| Option | Effect |
+| --- | --- |
+| `--offline` | Cache-only vendor lookup; missing prefixes become `Unknown` |
+| `--history-dir DIR` | Summary archive location; defaults to `history` |
+| `--analyze-drift` | Writes `vendor_drift.csv` from archived summaries |
+| `--site SITE` | Site tag for SIEM events and history metadata |
+| `--environment ENV` | Environment tag for SIEM events |
+| `--change-ticket ID` | Change/incident reference in history metadata |
+| `--siem-export` | Writes CSV and JSONL files to `output/siem/` |
+
+The default history archive is created on successful standalone runs, even without `--analyze-drift`. Its files are named `vendor_summary-YYYYMMDD-HHMMSS.txt` and a matching `.metadata.json`. Metadata includes `run_timestamp`, `site`, and `change_ticket_id`. Filenames use local time; metadata timestamps are UTC. Runs within the same second can collide, so avoid overlapping jobs in a shared working directory.
+
+Drift compares vendor percentages across saved summaries; it is not an alert engine or a per-device change detector. Separate history folders by site and collection scope. The CSV includes metadata rows followed by vendor percentage rows, rather than one normalized event per row.
+
+## Cache and network behavior
+
+The script loads `output/data/oui_cache.json` relative to the current working directory. The repository also includes `shadowvendor/data/oui_cache.json`, but the default constructor does not load that file automatically. The README copies it into place without replacing an existing working cache.
+
+Online mode consults the cache, then may query `api.macvendors.com` or `api.maclookup.app` with the first three bytes of an address. The remaining bytes and input file are not sent by the lookup code. API requests have timeouts and retry behavior; lookup success and vendor-name freshness are not guaranteed.
+
+Offline mode makes no external vendor lookup requests. An absent prefix is saved in `output/data/failed_lookups.json`. That failed-lookup list is checked before the vendor cache, including on subsequent online runs. If a prefix remains `Unknown` after adding a cache entry, stop other runs, back up the failed-lookup file, and remove the affected prefix before retrying. Do not silently discard the whole working cache.
+
+The bundled snapshot provides a starting point, not a freshness guarantee. `shadowvendor/utils/update_oui_cache.py` is an explicit network-download utility; invoking it is separate from offline analysis and can replace the working cache.
+
+The generated HTML requests `https://cdn.plot.ly/plotly-latest.min.js` when opened. A fully disconnected machine can still read the CSV and text reports, but the HTML chart is not a self-contained offline dashboard. Installing dependencies or updating the cache is also a separate network operation.
+
+## Output and SIEM fields
+
+Standard report files are under `output/`. The device CSV uses `MAC`, `Vendor`, `VLAN`, and `Port`. The port CSV is generated for MAC-table inputs. HTML and summary filenames are shared between runs; device and port filenames use the input stem.
+
+SIEM exports contain these fields in each record:
+
+```text
+timestamp, site, environment, mac, vendor, device_name,
+vlan, interface, input_type, source_file
+```
+
+`timestamp` is the UTC export time, not the original observation time on the switch. `device_name` defaults to a label derived from the MAC, not a discovered hostname. `interface` comes from the parsed port; `source_file` is the input filename. Empty site/environment values and `N/A` fields are valid.
+
+`shadowvendor_siem.json` is JSON Lines despite its extension. Ingestion, retention, correlation, and alerting are configured outside ShadowVendor. Exports include complete MAC addresses; share sanitized samples when reporting bugs.
+
+## Configuration and diagnostics
+
+[CONFIG.md](../CONFIG.md) covers configuration file formats and `SHADOWVENDOR_*` variables. Files are searched in the current directory, the user’s `.config/shadowvendor` directory, then `/etc/shadowvendor`. INI works with the standard library; YAML needs PyYAML. Python 3.11+ includes the TOML reader.
+
+Environment variables override config-file values. Explicit CLI options generally override those defaults, but boolean flags only enable features; they cannot turn a configured `true` value off. Explicit `--history-dir history` is indistinguishable from the default and can be replaced by configuration. The standalone script does not honor a configurable `output_dir`; its report paths remain under `output/` in the working directory.
+
+For diagnostic output on macOS/Linux:
+
+```bash
+SHADOWVENDOR_VERBOSE=1 python ShadowVendor.py --offline my-switch.txt
+SHADOWVENDOR_LOG=1 python ShadowVendor.py --offline my-switch.txt
+```
+
+The second command writes JSONL runtime events to `output/shadowvendor_runtime.log`. On PowerShell, set `$env:SHADOWVENDOR_VERBOSE = "1"` or `$env:SHADOWVENDOR_LOG = "1"` before running the command.
+
+## Documentation verification
+
+The README sample and combined offline/history/SIEM workflow were exercised on macOS with Python 3.14. The Windows commands were checked for consistency with the same paths but were not executed on Windows. This is documentation validation, not a claim of full platform certification or a fresh security audit.

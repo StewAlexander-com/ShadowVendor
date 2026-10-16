@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="365" viewBox="0 0 1000 365" role="img" aria-labelledby="title desc">
+<title id="title">Make the inventory visible.</title><desc id="desc">ShadowVendor turns saved network exports into vendor context and evidence for change reviews. Abstract bars are conceptual artwork, not measured results.</desc>
+<rect x="0" y="0" width="1000" height="365" rx="16" fill="#131e26" stroke="#131e26"/>
+<path d="M28 1L972 1" fill="none" stroke="#d9bd8e" stroke-width="2"/>
+<text x="32" y="43" fill="#d9bd8e" font-family="Arial, Helvetica, sans-serif" font-size="14" letter-spacing="1.4">STEW ALEXANDER / PRACTICAL TOOLS</text>
+<text x="32" y="110" fill="#f7f3e9" font-family="Georgia, Times New Roman, serif" font-size="56" >Make the inventory</text>
+<text x="32" y="169" fill="#f7f3e9" font-family="Georgia, Times New Roman, serif" font-size="62" >visible.</text>
+<text x="32" y="221" fill="#bfccd3" font-family="Arial, Helvetica, sans-serif" font-size="23" >From saved exports to useful evidence.</text>
+<rect x="650" y="70" width="318" height="192" rx="12" fill="#1e2d36" stroke="#354953"/>
+<text x="670" y="98" fill="#d9bd8e" font-family="Arial, Helvetica, sans-serif" font-size="13" letter-spacing="1.5">EXPORT → VENDOR MIX</text>
+<path d="M672 125L726 125" fill="none" stroke="#bfccd3" stroke-width="2"/>
+<text x="738" y="130" fill="#d9bd8e" font-family="Arial, Helvetica, sans-serif" font-size="17" >→</text>
+<rect x="772" y="118" width="159" height="14" rx="3" fill="#b9dcd6" opacity="1.0"/>
+<path d="M672 154L726 154" fill="none" stroke="#bfccd3" stroke-width="2"/>
+<text x="738" y="159" fill="#d9bd8e" font-family="Arial, Helvetica, sans-serif" font-size="17" >→</text>
+<rect x="772" y="147" width="127" height="14" rx="3" fill="#d9bd8e" opacity="0.88"/>
+<path d="M672 183L726 183" fill="none" stroke="#bfccd3" stroke-width="2"/>
+<text x="738" y="188" fill="#d9bd8e" font-family="Arial, Helvetica, sans-serif" font-size="17" >→</text>
+<rect x="772" y="176" width="102" height="14" rx="3" fill="#b9dcd6" opacity="0.76"/>
+<path d="M672 212L726 212" fill="none" stroke="#bfccd3" stroke-width="2"/>
+<text x="738" y="217" fill="#d9bd8e" font-family="Arial, Helvetica, sans-serif" font-size="17" >→</text>
+<rect x="772" y="205" width="76" height="14" rx="3" fill="#d9bd8e" opacity="0.64"/>
+<path d="M32 297L968 297" fill="none" stroke="#354953" stroke-width="2"/>
+<text x="32" y="330" fill="#b9dcd6" font-family="Arial, Helvetica, sans-serif" font-size="15" letter-spacing="1">LOCAL ANALYSIS</text>
+<text x="352" y="330" fill="#d9bd8e" font-family="Arial, Helvetica, sans-serif" font-size="15" letter-spacing="1">VENDOR CONTEXT</text>
+<text x="698" y="330" fill="#bfccd3" font-family="Arial, Helvetica, sans-serif" font-size="15" letter-spacing="1">CHANGE REVIEW</text>
+</svg>
