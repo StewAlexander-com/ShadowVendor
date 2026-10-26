@@ -79,11 +79,15 @@ Offline mode makes no external vendor lookup requests and does not persist misse
 
 The bundled snapshot provides a starting point, not a freshness guarantee. `shadowvendor/utils/update_oui_cache.py` is an explicit network-download utility; invoking it is separate from offline analysis and can replace the working cache.
 
-The generated HTML requests `https://cdn.plot.ly/plotly-latest.min.js` when opened. A fully disconnected machine can still read the CSV and text reports, but the HTML chart is not a self-contained offline dashboard. Installing dependencies or updating the cache is also a separate network operation.
+The generated HTML requests `https://cdn.plot.ly/plotly-latest.min.js` when opened. Chart rendering needs that library, but the report's data tables, styling, and counts are embedded and remain readable when JavaScript or the CDN is unavailable. Installing dependencies or updating the cache is also a separate network operation.
 
 ## Output and SIEM fields
 
 Standard report files are under `output/`. The device CSV uses `MAC`, `Vendor`, `VLAN`, and `Port`. The port CSV is generated for MAC-table inputs. HTML and summary filenames are shared between runs; device and port filenames use the input stem.
+
+The dashboard uses separate responsive panels for the vendor overview and four VLAN views. Panels stack on narrower windows; charts resize when their containers change, including split-pane resizing. Short windows scroll naturally. Select a vendor beside the donut or beneath the top-vendor chart to hide/show that slice or series. Full values are available in the data tables, and the Plotly toolbar retains zoom, pan, reset, and PNG export. The heatmap shows the top ten vendors overall; the top-vendor bars show the top five and exclude other vendors. Counts and CSV/text/SIEM schemas are unchanged.
+
+The quickstart example has three MAC addresses and two vendor labels in each of its four VLANs, so its total-count and vendor-count bars are equal within each chart. Each chart scales its own axis; compare the numbers and units, not heights across different charts. Vendor compositions still differ. For an uneven example, run `python ShadowVendor.py --offline docs/examples/vlan-review.txt` after the README's cache setup. VLANs 10, 20, 30, and 40 then contain 12, 8, 18, and 10 MAC addresses, and 3, 2, 4, and 2 vendor labels respectively. This run replaces the current dashboard and summary.
 
 Missing vendor lookups appear as `Unknown` in the device CSV, summary, and SIEM exports. Successful standalone runs finish with a list of files written during that run, including enabled SIEM exports, history files, and drift output. Optional files left by previous runs are not included in that list.
 

@@ -25,6 +25,8 @@ def main():
             sys.executable, "-I", "-c",
             "import shadowvendor; from importlib.resources import files; "
             "assert files('shadowvendor').joinpath('data/oui_cache.json').is_file(); "
+            "assert files('shadowvendor.utils').joinpath('dashboard.css').is_file(); "
+            "assert files('shadowvendor.utils').joinpath('dashboard.js').is_file(); "
             "print(shadowvendor.__file__)",
         ], cwd=work, check=True, capture_output=True, text=True)
         print("Installed package:", probe.stdout.strip())
