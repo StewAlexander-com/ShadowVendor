@@ -76,42 +76,60 @@ Open `output/vendor_distribution.html` in your browser. The same CDN requirement
 
 ## See the output
 
-Actual dashboard output from the 12-entry synthetic sample above, using the bundled cache. The README artwork illustrates the workflow; these captures show the application as it is.
+The responsive dashboard puts the vendor overview and four VLAN analyses in separate panels, with readable typography, a dark theme, and data tables alongside the charts. Panels adapt to window width and height; vendor controls let you hide or show slices and stacked series.
 
-[![Generated vendor distribution chart showing Cisco and Dell at three entries each, and Apple, VMware, and Intel at two each.](docs/readme-assets/dashboard.png)](docs/readme-assets/dashboard.png)
+These screenshots show actual generated output from the [48-address simulated VLAN inventory](docs/examples/vlan-review.txt), using the bundled vendor cache. They contain **48 unique MAC addresses, 5 vendor labels, and 4 VLANs**. The records are demonstration data, not a production network capture. Chart values and tables are checked against independently counted source records in the [accuracy tests](tests/test_dashboard_accuracy.py).
 
-Hover over a chart segment to inspect counts and percentages. Open the image at full size for its labels; the generated HTML provides the interactive view.
+<a href="docs/readme-assets/vendor-overview.png"><img src="docs/readme-assets/vendor-overview.png" alt="Themed vendor overview for 48 simulated MAC addresses: Cisco 14, Dell 12, VMware 10, Apple 8, and Intel 4." width="1000"></a>
+
+Cisco accounts for 14 addresses (29.2%), Dell 12 (25.0%), VMware 10 (20.8%), Apple 8 (16.7%), and Intel 4 (8.3%). The vendor list scrolls; Intel's row is below the visible portion of this capture. Percentages are rounded independently.
+
+<details>
+<summary><strong>View the inventory summary</strong></summary>
+
+<a href="docs/readme-assets/dashboard-summary.png"><img src="docs/readme-assets/dashboard-summary.png" alt="Dashboard summary: 48 unique MAC addresses, 5 vendor labels, and 4 known VLANs from vlan-review.txt." width="1000"></a>
+
+Counts describe parsed MAC addresses, not verified physical devices. Missing vendor lookups are included under the label `Unknown`.
+
+</details>
 
 ### Look closer at VLANs
 
-These additional graphs come directly from ShadowVendor running the [48-entry synthetic VLAN example](docs/examples/vlan-review.txt). They are cropped captures of the generated dashboard, with its original chart styling and values.
+**Where are entries concentrated?** VLANs 10, 20, 30, and 40 contain **12, 8, 18, and 10** unique MAC addresses respectively. The visible hover detail confirms VLAN 10's count of 12.
 
-**Where are entries concentrated?** VLAN 30 has 18 unique MAC entries; VLANs 10, 20, and 40 have 12, 8, and 10 respectively.
+<a href="docs/readme-assets/vlan-mac-counts.png"><img src="docs/readme-assets/vlan-mac-counts.png" alt="Themed MAC-count chart: VLAN 10 has 12 addresses, VLAN 20 has 8, VLAN 30 has 18, and VLAN 40 has 10." width="800"></a>
 
-<a href="docs/readme-assets/vlan-device-count.png"><img src="docs/readme-assets/vlan-device-count.png" alt="Actual device-count chart: VLAN 10 has 12 entries, VLAN 20 has 8, VLAN 30 has 18, and VLAN 40 has 10." width="680"></a>
+**What makes up each total?** The stacked chart shows the vendor mix. For example, VLAN 30 contains four Cisco, four Dell, four VMware, and six Apple addresses. This view includes the five most common vendors overall; other vendors are excluded when an inventory has more than five labels.
 
-**How varied is each VLAN?** The same export contains 3, 2, 4, and 2 vendor labels across those VLANs. Diversity adds context; it is not a security score.
-
-<a href="docs/readme-assets/vlan-vendor-diversity.png"><img src="docs/readme-assets/vlan-vendor-diversity.png" alt="Actual vendor-diversity chart: VLANs 10, 20, 30, and 40 contain 3, 2, 4, and 2 unique vendor labels." width="680"></a>
-
-**Which vendor appears where?** The heatmap reveals the mix behind the totals. This capture shows the application's hover detail: **four Dell entries in VLAN 30**. Colors represent entry counts, from purple (0) to yellow (6) in this example.
-
-<a href="docs/readme-assets/vendor-vlan-heatmap.png"><img src="docs/readme-assets/vendor-vlan-heatmap.png" alt="Actual vendor-by-VLAN heatmap with a visible tooltip reading VLAN 30, Dell, Devices: 4. Columns are Cisco, Dell, VMware, Apple, and Intel." width="680"></a>
+<a href="docs/readme-assets/vlan-vendor-stack.png"><img src="docs/readme-assets/vlan-vendor-stack.png" alt="Themed stacked vendor chart with VLAN totals 12, 8, 18, and 10. Colors identify Cisco, Dell, VMware, Apple, and Intel." width="800"></a>
 
 <details>
-<summary><strong>Open the complete four-chart dashboard and reproduce it</strong></summary>
+<summary><strong>Explore vendor diversity and the heatmap</strong></summary>
 
-[![Actual 48-entry VLAN dashboard showing device counts, vendor diversity, vendor distribution heatmap, and top-vendor bars with the shared legend and color scale.](docs/readme-assets/vlan-review-dashboard.png)](docs/readme-assets/vlan-review-dashboard.png)
+**How varied is each VLAN?** The same export contains **3, 2, 4, and 2** vendor labels across VLANs 10, 20, 30, and 40. Diversity adds context; it is not a security score.
 
-After the quick-start installation and cache setup:
+<a href="docs/readme-assets/vlan-vendor-labels.png"><img src="docs/readme-assets/vlan-vendor-labels.png" alt="Themed vendor-diversity chart showing 3, 2, 4, and 2 labels; the tooltip confirms four vendors in VLAN 30." width="800"></a>
+
+**Which vendor appears where?** The heatmap shows counts for the ten most common vendors overall. Dark navy represents zero and gold represents six in this example. The visible tooltip reads **VLAN 10, Apple, 0**; Intel has four addresses in the adjacent cell. Read the tooltip's vendor label to identify the selected cell.
+
+<a href="docs/readme-assets/vlan-vendor-heatmap.png"><img src="docs/readme-assets/vlan-vendor-heatmap.png" alt="Themed vendor-by-VLAN heatmap with Cisco, Dell, VMware, Apple, and Intel columns. The visible tooltip reads VLAN 10, Apple, Devices: 0." width="800"></a>
+
+Each chart scales its own axis. Compare values and units rather than bar heights across different charts. The smaller quickstart example has three addresses and two vendor labels in every VLAN, so its bars are correctly equal within each of those views.
+
+</details>
+
+<details>
+<summary><strong>Reproduce these screenshots' data</strong></summary>
+
+After the quick-start installation and bundled-cache setup:
 
 ```bash
 python ShadowVendor.py --offline docs/examples/vlan-review.txt
 ```
 
-Open `output/vendor_distribution.html`. This replaces the previous sample's dashboard and summary. The new example has **48 unique MAC entries, 5 vendor labels, and 4 VLANs**. These are demonstration addresses, not a production network capture.
+Open `output/vendor_distribution.html`. This replaces the previous sample's dashboard and summary. The HTML supports hover details, vendor toggles, zoom/reset, and PNG export; the README images are static. Expand **Read data table** to inspect the underlying values. Embedded tables remain readable when JavaScript or the chart CDN is unavailable.
 
-The [original 12-entry sample's VLAN dashboard](docs/readme-assets/vlan-analysis.png) is also available. VLAN and port detail depends on what the input contains and the parser recognizes; missing fields appear as `N/A`.
+VLAN and port detail depends on what the input contains and the parser recognizes; missing fields appear as `N/A`. See [image provenance](docs/readme-assets/README.md) for the source and verified counts.
 
 </details>
 
