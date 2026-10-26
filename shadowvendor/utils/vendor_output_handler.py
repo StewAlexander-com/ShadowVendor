@@ -10,7 +10,7 @@ This module provides functions for creating various output files:
 
 import os
 import csv
-import json
+from html import escape
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from typing import Dict, List, Set, Any, Union
@@ -20,13 +20,9 @@ from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeEl
 from pathlib import Path
 from collections import defaultdict
 from ..core.oui_manager import OUIManager  # Import OUIManager from core package
+from .dashboard import render_dashboard, script_json as _script_json
 
 console = Console()
-
-
-def _script_json(value):
-    """Preserve JSON values while preventing HTML from ending the script element."""
-    return json.dumps(value).replace("<", "\\u003c")
 
 
 def make_csv(input_file: Union[Path, str], devices: Dict[str, Dict[str, str]], oui_manager: OUIManager, *, output_dir: Union[str, Path] = "output") -> None:
@@ -224,11 +220,11 @@ def create_vendor_distribution(devices: Dict[str, Dict[str, str]], oui_manager, 
             
             # Enhanced hover text with more details
             hover_text = [
-                f"Vendor: {label}<br>" +
+                f"Vendor: {escape(label)}<br>" +
                 f"Device Count: {value:,} devices<br>" +
                 f"Percentage: {(value/total_devices)*100:.1f}%<br>" +
                 f"Present in {len(vendor_vlan_data[label])} VLANs<br>" +
-                f"Most Common VLAN: {max(vendor_vlan_data[label].items(), key=lambda x: x[1])[0] if vendor_vlan_data[label] else 'N/A'}<br>" +
+                f"Most Common VLAN: {escape(str(max(vendor_vlan_data[label].items(), key=lambda x: x[1])[0])) if vendor_vlan_data[label] else 'N/A'}<br>" +
                 f"Max Devices in a VLAN: {max(vendor_vlan_data[label].values()) if vendor_vlan_data[label] else 0}"
                 for label, value in zip(labels, values)
             ]
@@ -370,109 +366,8 @@ def create_vendor_distribution(devices: Dict[str, Dict[str, str]], oui_manager, 
         # Save visualizations to HTML
         output_file = output_dir / "vendor_distribution.html"
         
-        html_content = f"""
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <title>Network Vendor Distribution Analysis</title>
-                <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-                <style>
-                    * {{
-                        box-sizing: border-box;
-                    }}
-                    body {{
-                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
-                        margin: 0;
-                        padding: 30px 20px;
-                        background-color: #f5f5f5;
-                        line-height: 1.6;
-                        color: #333;
-                    }}
-                    .container {{
-                        max-width: 1400px;
-                        margin: 0 auto;
-                    }}
-                    h1 {{
-                        color: #2c3e50;
-                        text-align: center;
-                        margin: 0 0 40px 0;
-                        padding: 20px 0;
-                        font-size: 2.2em;
-                        font-weight: 600;
-                        letter-spacing: -0.5px;
-                    }}
-                    .chart-container {{
-                        background-color: white;
-                        padding: 35px 30px;
-                        margin: 0 0 30px 0;
-                        border-radius: 10px;
-                        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-                        transition: box-shadow 0.3s ease;
-                    }}
-                    .chart-container:hover {{
-                        box-shadow: 0 4px 12px rgba(0,0,0,0.12);
-                    }}
-                    .chart-container h2 {{
-                        margin: 0 0 25px 0;
-                        padding: 0;
-                        color: #34495e;
-                        font-size: 1.4em;
-                        font-weight: 500;
-                    }}
-                    #vendor-distribution {{
-                        width: 100%;
-                        height: 600px;
-                        padding: 10px 0;
-                    }}
-                    #vlan-analysis {{
-                        width: 100%;
-                        height: 1000px;
-                        padding: 10px 0;
-                    }}
-                    @media (max-width: 768px) {{
-                        body {{
-                            padding: 15px 10px;
-                        }}
-                        h1 {{
-                            font-size: 1.6em;
-                            margin-bottom: 25px;
-                            padding: 15px 0;
-                        }}
-                        .chart-container {{
-                            padding: 20px 15px;
-                            margin-bottom: 20px;
-                        }}
-                        #vendor-distribution {{
-                            height: 500px;
-                        }}
-                        #vlan-analysis {{
-                            height: 800px;
-                        }}
-                    }}
-                </style>
-            </head>
-            <body>
-                <div class="container">
-                    <h1>Network Vendor Distribution Analysis</h1>
-                    <div class="chart-container">
-                        <h2>Vendor Distribution</h2>
-                        <div id="vendor-distribution"></div>
-                    </div>
-                    <div class="chart-container">
-                        <h2>VLAN Analysis</h2>
-                        <div id="vlan-analysis"></div>
-                    </div>
-                </div>
-                <script>
-                    var fig1 = {_script_json(fig1.to_dict())};
-                    var fig2 = {_script_json(fig2.to_dict())};
-                    Plotly.newPlot('vendor-distribution', fig1.data, fig1.layout);
-                    Plotly.newPlot('vlan-analysis', fig2.data, fig2.layout);
-                </script>
-            </body>
-            </html>
-        """
-        
+        html_content = render_dashboard(fig1, fig2, vendor_counts, vlan_vendor_data, input_file)
+
         with open(output_file, 'w', encoding='utf-8') as f:
             f.write(html_content)
         

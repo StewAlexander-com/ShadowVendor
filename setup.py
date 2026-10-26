@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="shadowvendor",
-    version="14.0.2",
+    version="14.1.0",
     packages=find_packages(),
     install_requires=[
         "requests>=2.31.0",

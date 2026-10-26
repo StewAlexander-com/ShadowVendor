@@ -39,5 +39,7 @@ jobs:
         run: python -m pip install . -r requirements-dev.txt
       - name: Run isolated tests and configured security scan
         run: python -m pytest tests --bandit -q
+      - name: Check dashboard controller contracts (no browser rendering)
+        run: node tests/dashboard_controller.cjs
       - name: Verify the installed distribution outside the checkout
         run: python tests/wheel_smoke.py
