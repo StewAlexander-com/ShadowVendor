@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "shadowvendor"
-version = "14.0.1"
+version = "14.0.2"
 description = "Network device vendor analysis tool - Transform MAC address tables into interactive dashboards, detect new vendors, and export SIEM events for security monitoring"
 authors = [
     { name = "Stewart Alexander", email = "stewart@stewalexander.com" }

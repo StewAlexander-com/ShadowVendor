@@ -21,9 +21,6 @@ Example usage:
 
 from pathlib import Path
 from typing import Dict, List, Optional, Any, Union
-from datetime import datetime, timezone
-import json
-import shutil
 
 from shadowvendor.core.oui_manager import OUIManager
 from shadowvendor.core.parsing import read_opening_lines
@@ -34,6 +31,7 @@ from shadowvendor.utils.vendor_output_handler import (
     save_vendor_summary
 )
 from shadowvendor.utils.drift_analysis import analyze_drift
+from shadowvendor.utils.history import archive_vendor_summary
 from shadowvendor.utils.siem_export import export_siem_events
 from shadowvendor.utils.runtime_logger import get_logger
 from shadowvendor.core.netvendor import (
@@ -240,19 +238,7 @@ def analyze_file(
         # Output functions create "output" subdirectory, so summary is at output_path/output/vendor_summary.txt
         summary_src = output_path / "output" / "vendor_summary.txt"
         if summary_src.exists():
-            timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-            summary_dst = history_path / f"vendor_summary-{timestamp}.txt"
-            shutil.copy2(summary_src, summary_dst)
-            
-            # Write metadata
-            metadata = {
-                "run_timestamp": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
-                "site": site,
-                "change_ticket_id": change_ticket,
-            }
-            metadata_path = history_path / f"{summary_dst.stem}.metadata.json"
-            with metadata_path.open("w", encoding="utf-8") as f:
-                json.dump(metadata, f, indent=2)
+            archive_vendor_summary(summary_src, history_path, site=site, change_ticket=change_ticket)
     
     # Drift analysis (if requested)
     if analyze_drift_flag and history_dir:
@@ -269,4 +255,3 @@ def analyze_file(
         "input_type": input_type,
         "devices": devices,  # Full device dictionary with vendor info
     }
-

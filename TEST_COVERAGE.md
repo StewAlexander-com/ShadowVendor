@@ -17,6 +17,7 @@ Tests use temporary working directories and explicit cache fixtures. Unexpected 
 - `test_api.py`: input errors, device counts, history, and existence of every reported SIEM file.
 - `test_execution_paths.py`: standalone CLI, installed entry-point function, API, flags, configuration, history, and exports.
 - `test_remediations.py`: 240-device synthetic workflows, output schemas/counts, safe HTML script embedding, headerless input, leading blanks, malformed addresses, case deduplication, batch behavior, cache recovery, and explicit API output routing.
+- `test_user_experience.py`: same-second CLI/API archives and drift ordering, concurrent archive reservations, orphan metadata and failure cleanup, consistent unknown labels, duplicate/rejected-row accounting across all input shapes, completed-output lists, stale optional files, literal paths, and early/partial failure notices.
 
 The synthetic fixtures in `tests/fixtures/synthetic/` contain no captured network inventory. Vendor labels are fictitious cache mappings. `expected.json` records their expected counts.
 
