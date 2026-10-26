@@ -78,6 +78,7 @@ def test_analyze_file_siem_export(sample_mac_list_file, temp_dir):
     assert result['device_count'] == 2
     assert any('siem' in f and 'shadowvendor_siem.json' in f for f in result['output_files'])
     assert any('siem' in f and 'shadowvendor_siem.csv' in f for f in result['output_files'])
+    assert all(Path(f).is_file() for f in result['output_files'])
 
 
 def test_analyze_file_history(sample_mac_list_file, temp_dir):
@@ -135,4 +136,3 @@ def test_analyze_file_no_devices(temp_dir):
             offline=True,
             output_dir=temp_dir
         )
-

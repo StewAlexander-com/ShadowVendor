@@ -22,6 +22,14 @@ from shadowvendor import analyze_file
 from shadowvendor.config import load_config
 
 
+@pytest.fixture(autouse=True)
+def vendor_services(monkeypatch):
+    """Execution-path tests exercise reports, with deterministic unknown vendors."""
+    from shadowvendor.core.oui_manager import OUIManager
+    monkeypatch.setattr("requests.get", MagicMock(return_value=MagicMock(status_code=404)))
+    monkeypatch.setattr(OUIManager, "_rate_limit", lambda self, service: None)
+
+
 @pytest.fixture
 def temp_dir():
     """Create a temporary directory for test outputs."""
@@ -501,4 +509,3 @@ site = CONFIG_SITE
         # Env vars should override config
         assert config.get('offline') == True
         assert config.get('site') == 'ENV_SITE'
-

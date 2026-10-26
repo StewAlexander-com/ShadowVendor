@@ -24,10 +24,9 @@ from typing import Dict, List, Optional, Any, Union
 from datetime import datetime, timezone
 import json
 import shutil
-import os
-from contextlib import contextmanager
 
 from shadowvendor.core.oui_manager import OUIManager
+from shadowvendor.core.parsing import read_opening_lines
 from shadowvendor.utils.vendor_output_handler import (
     make_csv,
     generate_port_report,
@@ -42,17 +41,6 @@ from shadowvendor.core.netvendor import (
     is_arp_table as is_arp_table_line,
     format_mac_address
 )
-
-
-@contextmanager
-def change_directory(path: Path):
-    """Context manager to temporarily change working directory."""
-    old_dir = os.getcwd()
-    try:
-        os.chdir(path)
-        yield
-    finally:
-        os.chdir(old_dir)
 
 
 def analyze_file(
@@ -82,7 +70,8 @@ def analyze_file(
         environment: Environment identifier for SIEM exports
         change_ticket: Change ticket/incident ID for drift correlation
         siem_export: If True, generate SIEM-friendly CSV/JSONL exports
-        output_dir: Directory for output files (default: "output")
+        output_dir: Parent of the existing "output" report subdirectory (default: "output").
+            Standard reports and SIEM exports are kept together without changing cwd.
         verbose: If True, enable verbose output (requires SHADOWVENDOR_VERBOSE env var)
     
     Returns:
@@ -132,8 +121,7 @@ def analyze_file(
     mac_count = 0
     
     with open(input_path, 'r', encoding='utf-8') as f:
-        first_line = f.readline().strip()
-        second_line = f.readline().strip() if first_line else ""
+        first_line, second_line = read_opening_lines(f)
         
         # Determine file type
         is_mac_list = is_mac_address(first_line)
@@ -158,13 +146,6 @@ def analyze_file(
         
         # Reset to start of file
         f.seek(0)
-        
-        # Skip headers
-        if is_mac_table:
-            next(f, None)  # Skip header line
-            next(f, None)  # Skip separator line
-        elif is_arp_table_file:
-            next(f, None)  # Skip header line
         
         # Process lines
         for line in f:
@@ -219,27 +200,21 @@ def analyze_file(
         devices[mac]['vendor'] = vendor
         vendors.add(vendor)
     
-    # Generate outputs (output functions use "output" directory, so we change to output_dir)
+    # Keep the established API report location without changing the process cwd.
+    report_dir = output_path / "output"
     output_files = []
-    
-    with change_directory(output_path):
-        # Device CSV
-        make_csv(input_path, devices, oui_manager)
-        output_files.append(output_path / "output" / f"{input_path.stem}-Devices.csv")
-        
-        # Port report (only for MAC tables)
-        if is_mac_table:
-            generate_port_report(str(input_path), devices, oui_manager, is_mac_table)
-            output_files.append(output_path / "output" / f"{input_path.stem}-Ports.csv")
-        
-        # HTML dashboard
-        create_vendor_distribution(devices, oui_manager, input_path)
-        output_files.append(output_path / "output" / "vendor_distribution.html")
-        
-        # Text summary
-        save_vendor_summary(devices, oui_manager, input_path)
-        output_files.append(output_path / "output" / "vendor_summary.txt")
-    
+    make_csv(input_path, devices, oui_manager, output_dir=report_dir)
+    output_files.append(report_dir / f"{input_path.stem}-Devices.csv")
+
+    if is_mac_table:
+        generate_port_report(str(input_path), devices, oui_manager, is_mac_table, output_dir=report_dir)
+        output_files.append(report_dir / f"{input_path.stem}-Ports.csv")
+
+    create_vendor_distribution(devices, oui_manager, input_path, output_dir=report_dir)
+    output_files.append(report_dir / "vendor_distribution.html")
+    save_vendor_summary(devices, oui_manager, input_path, output_dir=report_dir)
+    output_files.append(report_dir / "vendor_summary.txt")
+
     # SIEM export (if requested)
     if siem_export:
         export_siem_events(
@@ -249,6 +224,7 @@ def analyze_file(
             site=site,
             environment=environment,
             input_type=input_type,
+            output_dir=report_dir,
         )
         output_files.append(output_path / "output" / "siem" / "shadowvendor_siem.csv")
         output_files.append(output_path / "output" / "siem" / "shadowvendor_siem.json")

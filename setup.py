@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="shadowvendor",
-    version="14.0.0",
+    version="14.0.1",
     packages=find_packages(),
     install_requires=[
         "requests>=2.31.0",
@@ -27,4 +27,4 @@ setup(
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
     ],
-) 
+)

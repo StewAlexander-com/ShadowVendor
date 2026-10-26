@@ -5,6 +5,8 @@ from rich.console import Console
 from ..utils.vendor_output_handler import make_csv, generate_port_report, create_vendor_distribution, save_vendor_summary
 from .oui_manager import OUIManager
 
+from shadowvendor.core.parsing import format_mac_address, is_mac_address, read_opening_lines
+
 console = Console()
 
 def check_dependencies():
@@ -19,104 +21,9 @@ def check_dependencies():
             console.print(f"Please install it using: pip install {module}")
             sys.exit(1)
 
-def is_mac_address(mac: str) -> bool:
-    """
-    Check if a string is a valid MAC address in standard format.
-    Supports formats:
-    - 00:11:22:33:44:55 (standard)
-    - 00-11-22-33-44-55 (standard)
-    - 001122334455 (no separators)
-    - 0011.2233.4455 (dot notation)
-    - D8.C7.C8.14C17B (ARP table format)
-    - 00:11:22:33:44:55/ff:ff:ff:ff:ff:ff (Juniper)
-    - 00:11:22:33:44:55/24 (Aruba)
-    - 00-11-22-33-44-55/ff-ff-ff-ff-ff-ff (Extreme)
-    - 00:11:22:33:44:55/ffff.ffff.ffff (Brocade)
-    """
-    if not mac:
-        return False
-        
-    # Split on common separators to handle mask formats
-    parts = re.split(r'[/\s]', mac.strip())
-    mac_part = parts[0].lower()
-    
-    # Remove all separators from MAC part
-    mac_clean = mac_part.replace(':', '').replace('-', '').replace('.', '')
-    
-    # Check length
-    if len(mac_clean) != 12:
-        return False
-        
-    # Check if all characters are valid hex
-    try:
-        int(mac_clean, 16)
-        
-        # If there's a mask part, validate it
-        if len(parts) > 1:
-            mask = parts[1].lower()
-            # Check for prefix length format (e.g., /24)
-            if mask.isdigit() and 0 <= int(mask) <= 48:
-                return True
-            # Check for mask format (e.g., ff:ff:ff:ff:ff:ff)
-            mask_clean = mask.replace(':', '').replace('-', '').replace('.', '')
-            if len(mask_clean) != 12:
-                return False
-            try:
-                int(mask_clean, 16)
-                return True
-            except ValueError:
-                return False
-        return True
-    except ValueError:
-        return False
-
 def is_arp_table_mac(mac: str) -> bool:
-    """
-    Check if a string is a valid MAC address in ARP table format.
-    Handles dot notation format like: D8.C7.C8.14C17B
-    """
-    if not mac:
-        return False
-    
-    # Split by dots and check we have parts
-    parts = mac.strip().split('.')
-    if len(parts) != 4:
-        return False
-    
-    # Join parts and check if it's valid hex
-    mac_clean = ''.join(parts)[:12]  # Take first 12 chars in case of longer format
-    try:
-        int(mac_clean, 16)
-        return True
-    except ValueError:
-        return False
-
-def format_mac_address(mac: str) -> str:
-    """
-    Format a MAC address consistently.
-    Input can be any format, output will be xx:xx:xx:xx:xx:xx
-    Handles all vendor-specific formats including masks.
-    """
-    if not mac:
-        return None
-    
-    # Split on common separators to handle mask formats
-    parts = re.split(r'[/\s]', mac.strip())
-    mac_part = parts[0]
-    
-    # Handle dot notation (ARP table format)
-    if '.' in mac_part:
-        parts = mac_part.strip().split('.')
-        mac_clean = ''.join(parts)[:12]
-    else:
-        # Handle standard formats
-        mac_clean = mac_part.strip().lower().replace(':', '').replace('-', '')
-    
-    # Take first 12 characters and format with colons
-    if len(mac_clean) >= 12:
-        mac_clean = mac_clean[:12]
-        return ':'.join([mac_clean[i:i+2] for i in range(0, 12, 2)])
-    return None
+    """Recognize validated MAC addresses in ARP rows."""
+    return is_mac_address(mac)
 
 def is_arp_table(line: str) -> bool:
     """
@@ -269,8 +176,7 @@ def main():
     mac_count = 0
     
     with open(input_file, 'r') as f:
-        first_line = f.readline().strip()
-        second_line = f.readline().strip() if first_line else ""
+        first_line, second_line = read_opening_lines(f)
         
         # Determine file type
         is_mac_list = is_mac_address(first_line)
@@ -279,13 +185,6 @@ def main():
         
         # Reset to start of file
         f.seek(0)
-        
-        # Skip headers for MAC and ARP tables
-        if is_mac_table:
-            next(f)  # Skip "Vlan Mac Address..." line
-            next(f)  # Skip "---- -----------..." line
-        elif is_arp:
-            next(f)  # Skip "Protocol Address..." line
         
         for line in f:
             line = line.strip()

@@ -31,6 +31,8 @@ def export_siem_events(
     site: str | None = None,
     environment: str | None = None,
     input_type: str | None = None,
+    *,
+    output_dir: str | Path = "output",
 ) -> None:
     """
     Export normalized events for SIEM ingestion with stable schema.
@@ -60,7 +62,7 @@ def export_siem_events(
         - source_file: Original input filename
     """
     # Create dedicated SIEM output directory
-    siem_dir = Path("output") / "siem"
+    siem_dir = Path(output_dir) / "siem"
     try:
         siem_dir.mkdir(parents=True, exist_ok=True)
     except PermissionError:

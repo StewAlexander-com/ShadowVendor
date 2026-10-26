@@ -2,7 +2,7 @@
 
 [← Back to the README](../README.md)
 
-This reference describes the repository’s standalone `ShadowVendor.py` workflow. Examples assume you are in the repository root with dependencies installed. The README recommends Python 3.11+; existing package metadata disagrees on the older minimum (`setup.py`: 3.9, `pyproject.toml`: 3.8). This documentation update does not change packaging or claim those older versions were tested.
+This reference describes the repository’s standalone `ShadowVendor.py` workflow. Examples assume you are in the repository root with dependencies installed. The README recommends Python 3.11+ for new installations. Package metadata consistently declares Python 3.9+; CI covers 3.9, 3.12, and 3.14 on Linux, plus 3.12 on Windows.
 
 ## Choose an entry point
 
@@ -14,11 +14,11 @@ This reference describes the repository’s standalone `ShadowVendor.py` workflo
 
 Install the package with `python -m pip install -e .` if you need the `shadowvendor` command. The README’s direct-script walkthrough only needs `requirements.txt`.
 
-The API and CLI use different parsing and output paths. Currently, API standard reports are nested under `<output_dir>/output/`, while SIEM exports are written relative to the process working directory. Do not assume that every path returned by an API call with `siem_export=True` identifies the actual export location. Prefer the standalone script for the documented combined workflow.
+API standard reports remain under `<output_dir>/output/` for compatibility. API SIEM exports now live alongside them in `<output_dir>/output/siem/`, and returned paths identify the files actually written. Analysis does not change the process working directory. CLI report paths remain `output/`. Both paths use the same MAC normalization; input validation rejects malformed addresses before lookup.
 
 ## Input shapes
 
-Use UTF-8 text. The script detects the shape from the opening lines; avoid leading blank lines or switch prompts before the data. The included [synthetic MAC table](examples/mac-table.txt) is a reproducible example.
+Use UTF-8 text. The script detects the shape from the first nonblank lines. Leading blanks are accepted, and headerless MAC/ARP tables retain their first records. Remove switch prompts or unrelated preambles before the data. The included [synthetic MAC table](examples/mac-table.txt) is a reproducible example.
 
 **MAC list** — one address per line, using colon, hyphen, dotted, or compact notation:
 
@@ -73,7 +73,7 @@ The script loads `output/data/oui_cache.json` relative to the current working di
 
 Online mode consults the cache, then may query `api.macvendors.com` or `api.maclookup.app` with the first three bytes of an address. The remaining bytes and input file are not sent by the lookup code. API requests have timeouts and retry behavior; lookup success and vendor-name freshness are not guaranteed.
 
-Offline mode makes no external vendor lookup requests. An absent prefix is saved in `output/data/failed_lookups.json`. That failed-lookup list is checked before the vendor cache, including on subsequent online runs. If a prefix remains `Unknown` after adding a cache entry, stop other runs, back up the failed-lookup file, and remove the affected prefix before retrying. Do not silently discard the whole working cache.
+Offline mode makes no external vendor lookup requests and does not persist misses as failed lookups. Positive cache entries take precedence over earlier failures. Online failures are cached for five minutes to avoid repeated requests while allowing recovery. Older `failed_lookups.json` lists have no timestamps and are treated as expired; new files map OUI prefixes to failure timestamps. Existing positive caches are retained, and loaded OUI keys are normalized consistently.
 
 The bundled snapshot provides a starting point, not a freshness guarantee. `shadowvendor/utils/update_oui_cache.py` is an explicit network-download utility; invoking it is separate from offline analysis and can replace the working cache.
 

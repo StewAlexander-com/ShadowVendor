@@ -1,0 +1,20 @@
+{
+  "unique_devices": 240,
+  "input_rows_with_duplicates": 242,
+  "vlans": [
+    "10",
+    "20",
+    "30",
+    "40",
+    "50",
+    "60"
+  ],
+  "vendor_counts": {
+    "Demo Switch Co": 48,
+    "Demo Workstation Co": 48,
+    "Demo Phone Co": 48,
+    "Demo Sensor Co": 48,
+    "Unknown": 48
+  },
+  "note": "Vendor names are synthetic cache mappings, not claims about actual OUI ownership."
+}
