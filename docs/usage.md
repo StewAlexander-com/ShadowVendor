@@ -49,6 +49,8 @@ A matching layout matters more than the switch brand. Port extraction in the sta
 
 Repeated MAC addresses overwrite their earlier entry; a multi-VLAN or multi-port appearance is not retained as separate observations. Counts therefore mean unique parsed MAC addresses, not an authenticated count of physical devices.
 
+The standalone CLI distinguishes accepted MAC entries, unique addresses, and duplicates in its processing summary. It counts recognized table headings/separators separately and warns when data rows are rejected. Check that warning and the device CSV before treating a partial input as a complete inventory.
+
 ## CLI options
 
 Run `python ShadowVendor.py --help` for the installed script’s help.
@@ -63,7 +65,7 @@ Run `python ShadowVendor.py --help` for the installed script’s help.
 | `--change-ticket ID` | Change/incident reference in history metadata |
 | `--siem-export` | Writes CSV and JSONL files to `output/siem/` |
 
-The default history archive is created on successful standalone runs, even without `--analyze-drift`. Its files are named `vendor_summary-YYYYMMDD-HHMMSS.txt` and a matching `.metadata.json`. Metadata includes `run_timestamp`, `site`, and `change_ticket_id`. Filenames use local time; metadata timestamps are UTC. Runs within the same second can collide, so avoid overlapping jobs in a shared working directory.
+The default history archive is created on successful standalone runs, even without `--analyze-drift`. Its files are named `vendor_summary-YYYYMMDD-HHMMSS.txt` and a matching `.metadata.json`. A later run in the same second adds `-000001`, `-000002`, and so on before the extension, preserving earlier summaries and their metadata. Drift reads the base snapshot before its numbered siblings. The Python API uses the same archive behavior. Metadata includes `run_timestamp`, `site`, and `change_ticket_id`. Filenames use local time; metadata timestamps are UTC. Archive names are reserved exclusively, but concurrent analyses still need separate working/output directories because the current dashboard, summary, CSVs, and cache use shared filenames.
 
 Drift compares vendor percentages across saved summaries; it is not an alert engine or a per-device change detector. Separate history folders by site and collection scope. The CSV includes metadata rows followed by vendor percentage rows, rather than one normalized event per row.
 
@@ -82,6 +84,10 @@ The generated HTML requests `https://cdn.plot.ly/plotly-latest.min.js` when open
 ## Output and SIEM fields
 
 Standard report files are under `output/`. The device CSV uses `MAC`, `Vendor`, `VLAN`, and `Port`. The port CSV is generated for MAC-table inputs. HTML and summary filenames are shared between runs; device and port filenames use the input stem.
+
+Missing vendor lookups appear as `Unknown` in the device CSV, summary, and SIEM exports. Successful standalone runs finish with a list of files written during that run, including enabled SIEM exports, history files, and drift output. Optional files left by previous runs are not included in that list.
+
+If input validation fails, existing reports are preserved and the CLI explains that no new reports were generated. If an error occurs after writing starts, it warns that files may be partial or from an earlier run. Resolve the error and rerun before using those files as a fresh inventory.
 
 SIEM exports contain these fields in each record:
 

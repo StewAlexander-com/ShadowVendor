@@ -133,7 +133,8 @@ def load_snapshots_from_directory(history_dir: Path) -> List[Snapshot]:
     if not history_dir.is_dir():
         raise ValueError(f"History path '{history_dir}' is not a directory")
 
-    summary_files = sorted(history_dir.glob("vendor_summary*.txt"))
+    # A base stem must precede its same-second -000001, -000002 siblings.
+    summary_files = sorted(history_dir.glob("vendor_summary*.txt"), key=lambda path: path.stem)
     snapshots: List[Snapshot] = []
 
     for path in summary_files:
@@ -259,5 +260,4 @@ def main(argv: List[str] | None = None) -> None:
 
 if __name__ == "__main__":
     main()
-
 

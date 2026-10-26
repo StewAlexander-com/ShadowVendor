@@ -2,12 +2,9 @@
 
 import os
 import sys
-import json
 import csv
 import argparse
-import shutil
 from pathlib import Path
-from datetime import datetime, timezone
 from rich.console import Console
 
 from shadowvendor.core.oui_manager import OUIManager
@@ -18,6 +15,7 @@ from shadowvendor.utils.vendor_output_handler import (
     save_vendor_summary
 )
 from shadowvendor.utils.drift_analysis import analyze_drift
+from shadowvendor.utils.history import archive_vendor_summary
 from shadowvendor.utils.siem_export import export_siem_events
 from shadowvendor.utils.runtime_logger import get_logger
 from shadowvendor.config import load_config
@@ -84,7 +82,44 @@ def parse_port_info(line: str) -> str:
     except ValueError:
         return None
 
+def is_table_heading(line: str, is_arp_table: bool) -> bool:
+    """Recognize non-data rows for diagnostics without changing the parser."""
+    normalized = " ".join(line.lower().split())
+    if set(normalized) <= set("-=+ "):
+        return True
+    if is_arp_table:
+        return (normalized.startswith("protocol ") and "hardware addr" in normalized
+                and "interface" in normalized)
+    return (normalized == "mac address table" or
+            (normalized.startswith("vlan ") and "mac address" in normalized))
+
 def main():
+    """Run the CLI and distinguish rejected input from incomplete report writes."""
+    report_state = {"started": False}
+    try:
+        _run(report_state)
+    except SystemExit as error:
+        if error.code:
+            report_failure(report_state["started"])
+        raise
+    except OSError as error:
+        console.print(f"Error: {error}", style="bold red", markup=False)
+        report_failure(report_state["started"])
+        raise SystemExit(1) from None
+    except Exception:
+        report_failure(report_state["started"])
+        raise
+
+
+def report_failure(writing_started):
+    if writing_started:
+        message = "This run did not complete. Reports may be partial or from an earlier run."
+    else:
+        message = "No new reports were generated. Existing reports may be from an earlier run."
+    console.print(message, style="yellow")
+
+
+def _run(report_state):
     """
     Main entry point for the ShadowVendor package.
     """
@@ -240,6 +275,8 @@ def main():
     line_count = 0
     port_count = 0
     mac_count = 0
+    rejected_count = 0
+    heading_count = 0
     
     try:
         with open(input_file, 'r', encoding='utf-8') as f:
@@ -283,6 +320,7 @@ def main():
                     continue
                 
                 line_count += 1
+                previous_mac_count = mac_count
                 
                 if is_mac_list:
                     mac = line.lower()
@@ -296,6 +334,10 @@ def main():
                 elif is_arp_table:
                     # Skip the header line
                     if "Protocol" in line:
+                        if is_table_heading(line, True):
+                            heading_count += 1
+                        else:
+                            rejected_count += 1
                         continue
                         
                     # Use string split with maxsplit to preserve spacing
@@ -334,6 +376,11 @@ def main():
                             mac_count += 1
                             if VERBOSE:
                                 console.print(f"Added MAC table entry: {mac_formatted} (VLAN: {vlan}, Port: {port if port else 'N/A'})")
+                if mac_count == previous_mac_count:
+                    if not is_mac_list and is_table_heading(line, is_arp_table):
+                        heading_count += 1
+                    else:
+                        rejected_count += 1
     except PermissionError:
         console.print(f"[bold red]Error:[/bold red] Permission denied when reading file '{input_file}'.")
         console.print(f"[yellow]Hint:[/yellow] Please check file permissions or run with appropriate access.")
@@ -351,7 +398,15 @@ def main():
     # Print processing summary
     console.print(f"\nProcessing Summary:")
     console.print(f"Processed {line_count} lines")
-    console.print(f"Found {mac_count} MAC addresses")
+    duplicate_count = mac_count - len(devices)
+    duplicate_label = "duplicate" if duplicate_count == 1 else "duplicates"
+    console.print(f"Found {mac_count} MAC addresses ({len(devices)} unique, {duplicate_count} {duplicate_label})")
+    if heading_count:
+        console.print(f"Ignored {heading_count} header/separator rows")
+    if rejected_count:
+        row_label = "row" if rejected_count == 1 else "rows"
+        console.print(f"[yellow]Warning:[/yellow] Skipped {rejected_count} invalid data {row_label}. "
+                      "Check the input layout and device CSV for missing entries.")
     if VERBOSE:
         console.print(f"Total devices in dictionary: {len(devices)}")
     
@@ -360,6 +415,9 @@ def main():
         "lines_processed": line_count,
         "mac_addresses_found": mac_count,
         "unique_devices": len(devices),
+        "duplicate_entries": duplicate_count,
+        "invalid_data_rows": rejected_count,
+        "header_separator_rows": heading_count,
         "ports_found": port_count,
         "file_type": "mac_list" if is_mac_list else ("arp_table" if is_arp_table else "mac_table")
     })
@@ -402,15 +460,18 @@ def main():
     # Use Path for cross-platform compatibility
     input_path = Path(input_file)
     output_file = Path('output') / f"{input_path.stem}-Devices.csv"
+    written_files = []
     if VERBOSE:
         console.print(f"\nWriting to CSV file: {output_file}")
     
     try:
+        report_state["started"] = True
         with output_file.open('w', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
             writer.writerow(['MAC', 'Vendor', 'VLAN', 'Port'])
             for mac, info in devices.items():
                 vendor = oui_manager.get_vendor(mac)
+                vendor = vendor if vendor is not None else "Unknown"
                 vlan = info.get('vlan', 'N/A')
                 port = info.get('port', 'N/A')
                 writer.writerow([mac, vendor, vlan, port])
@@ -426,6 +487,7 @@ def main():
     
     # Verify the file was written
     if output_file.exists():
+        written_files.append(output_file)
         logger.log_output_generation("device_csv", str(output_file), len(devices))
         if VERBOSE:
             with output_file.open('r', encoding='utf-8') as f:
@@ -441,9 +503,12 @@ def main():
     # Generate additional reports
     if is_mac_table:
         generate_port_report(input_file, devices, oui_manager, is_mac_table)
+        written_files.append(Path("output") / f"{input_path.stem}-Ports.csv")
     
     create_vendor_distribution(devices, oui_manager, input_file)
+    written_files.append(Path("output/vendor_distribution.html"))
     save_vendor_summary(devices, oui_manager, input_file)
+    written_files.append(Path("output/vendor_summary.txt"))
 
     # Optional SIEM export
     if args.siem_export:
@@ -464,6 +529,10 @@ def main():
                 environment=args.environment,
                 input_type=input_type,
             )
+            written_files.extend([
+                Path("output/siem/shadowvendor_siem.csv"),
+                Path("output/siem/shadowvendor_siem.json"),
+            ])
         except PermissionError as e:
             console.print(f"[bold red]Error:[/bold red] Cannot create SIEM export files (permission denied).")
             console.print(f"[yellow]Hint:[/yellow] Please check directory permissions for 'output/siem/' or run with appropriate access.")
@@ -489,20 +558,11 @@ def main():
         
         summary_src = Path("output") / "vendor_summary.txt"
         if summary_src.exists():
-            timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-            summary_dst = history_dir / f"vendor_summary-{timestamp}.txt"
             try:
-                shutil.copy2(summary_src, summary_dst)
-                
-                # Write companion metadata file for drift analysis correlation
-                metadata = {
-                    "run_timestamp": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
-                    "site": args.site,
-                    "change_ticket_id": args.change_ticket,
-                }
-                metadata_path = history_dir / f"{summary_dst.stem}.metadata.json"
-                with metadata_path.open("w", encoding="utf-8") as f:
-                    json.dump(metadata, f, indent=2)
+                summary_dst, metadata_path = archive_vendor_summary(
+                    summary_src, history_dir, site=args.site, change_ticket=args.change_ticket
+                )
+                written_files.extend([summary_dst, metadata_path])
                 
                 if VERBOSE:
                     console.print(f"Archived vendor summary to [green]{summary_dst}[/green]")
@@ -522,7 +582,8 @@ def main():
         # args.history_dir has a default value, so it's always available
         try:
             drift_csv = analyze_drift(history_dir)
-            console.print(f"Vendor drift analysis written to [green]{drift_csv}[/green]")
+            written_files.append(drift_csv)
+            console.print(f"Vendor drift analysis written to {drift_csv}", markup=False)
         except RuntimeError as e:
             console.print(f"[bold red]Error:[/bold red] Drift analysis failed: {e}")
             console.print(f"[yellow]Hint:[/yellow] Ensure you have archived at least one vendor summary using --history-dir before running drift analysis.")
@@ -536,6 +597,10 @@ def main():
             console.print(f"[yellow]Hint:[/yellow] Please check that the history directory '{history_dir}' is accessible and contains valid vendor summary files.")
             sys.exit(1)
     
+    console.print("\nFiles written this run:", style="bold")
+    for path in written_files:
+        console.print(f"  {path}", markup=False, highlight=False, soft_wrap=True)
+
     # Close logger
     logger.close()
 
