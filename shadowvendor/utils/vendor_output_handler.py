@@ -23,7 +23,13 @@ from ..core.oui_manager import OUIManager  # Import OUIManager from core package
 
 console = Console()
 
-def make_csv(input_file: Union[Path, str], devices: Dict[str, Dict[str, str]], oui_manager: OUIManager) -> None:
+
+def _script_json(value):
+    """Preserve JSON values while preventing HTML from ending the script element."""
+    return json.dumps(value).replace("<", "\\u003c")
+
+
+def make_csv(input_file: Union[Path, str], devices: Dict[str, Dict[str, str]], oui_manager: OUIManager, *, output_dir: Union[str, Path] = "output") -> None:
     """
     Creates a CSV file with device information.
     
@@ -33,8 +39,8 @@ def make_csv(input_file: Union[Path, str], devices: Dict[str, Dict[str, str]], o
         oui_manager: OUI manager instance for vendor lookups
     """
     # Ensure output directory exists
-    output_dir = Path("output")
-    output_dir.mkdir(exist_ok=True)
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
     
     # Convert input_file to Path if it's a string
     if isinstance(input_file, str):
@@ -66,7 +72,7 @@ def make_csv(input_file: Union[Path, str], devices: Dict[str, Dict[str, str]], o
     
     console.print(f"\nDevice information written to {output_file}")
     
-def generate_port_report(input_file: str, devices: Dict[str, Dict[str, str]], oui_manager, is_mac_table: bool = True) -> None:
+def generate_port_report(input_file: str, devices: Dict[str, Dict[str, str]], oui_manager, is_mac_table: bool = True, *, output_dir: Union[str, Path] = "output") -> None:
     """
     Generate a CSV report analyzing devices connected to each network port.
     
@@ -92,7 +98,7 @@ def generate_port_report(input_file: str, devices: Dict[str, Dict[str, str]], ou
         Gi1/0/1,3,10,20,Cisco Systems;Hewlett Packard,00:11:22:33:44:55,00:11:22:33:44:66
     """
     # Create output file path
-    output_file = os.path.join('output', os.path.basename(input_file).replace('.txt', '-Ports.csv'))
+    output_file = Path(output_dir) / f"{Path(input_file).stem}-Ports.csv"
     
     # Group devices by port
     port_data = {}
@@ -131,7 +137,7 @@ def generate_port_report(input_file: str, devices: Dict[str, Dict[str, str]], ou
                 ','.join(info['devices'])
             ])
 
-def create_vendor_distribution(devices: Dict[str, Dict[str, str]], oui_manager, input_file: Path) -> None:
+def create_vendor_distribution(devices: Dict[str, Dict[str, str]], oui_manager, input_file: Path, *, output_dir: Union[str, Path] = "output") -> None:
     """
     Creates interactive visualizations of vendor and VLAN distributions.
     
@@ -167,8 +173,8 @@ def create_vendor_distribution(devices: Dict[str, Dict[str, str]], oui_manager, 
         - Export capabilities
     """
     # Create output directory if it doesn't exist
-    output_dir = Path("output")
-    output_dir.mkdir(exist_ok=True)
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
     
     console.print("[cyan]Creating visualizations...[/cyan]")
     
@@ -458,8 +464,8 @@ def create_vendor_distribution(devices: Dict[str, Dict[str, str]], oui_manager, 
                     </div>
                 </div>
                 <script>
-                    var fig1 = {json.dumps(fig1.to_dict())};
-                    var fig2 = {json.dumps(fig2.to_dict())};
+                    var fig1 = {_script_json(fig1.to_dict())};
+                    var fig2 = {_script_json(fig2.to_dict())};
                     Plotly.newPlot('vendor-distribution', fig1.data, fig1.layout);
                     Plotly.newPlot('vlan-analysis', fig2.data, fig2.layout);
                 </script>
@@ -472,7 +478,7 @@ def create_vendor_distribution(devices: Dict[str, Dict[str, str]], oui_manager, 
         
         console.print(f"\nCreated interactive visualizations in {output_file}")
 
-def save_vendor_summary(devices: Dict[str, Dict[str, str]], oui_manager, input_file: Path) -> None:
+def save_vendor_summary(devices: Dict[str, Dict[str, str]], oui_manager, input_file: Path, *, output_dir: Union[str, Path] = "output") -> None:
     """
     Creates a plain text summary of vendor distribution.
     
@@ -502,8 +508,8 @@ def save_vendor_summary(devices: Dict[str, Dict[str, str]], oui_manager, input_f
         +------------------+-------+------------+
     """
     # Create output directory if it doesn't exist
-    output_dir = Path("output")
-    output_dir.mkdir(exist_ok=True)
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
     
     # Process vendor counts
     vendor_counts = Counter()

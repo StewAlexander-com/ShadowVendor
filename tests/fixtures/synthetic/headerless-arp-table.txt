@@ -1,0 +1,3 @@
+Internet 192.0.2.1 0 0011.2200.0001 ARPA Vlan10
+Internet 192.0.2.2 0 00aa.bb00.0002 ARPA Vlan20
+Internet 192.0.2.3 0 00cc.dd00.0003 ARPA Vlan30

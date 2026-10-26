@@ -22,6 +22,8 @@ from shadowvendor.utils.siem_export import export_siem_events
 from shadowvendor.utils.runtime_logger import get_logger
 from shadowvendor.config import load_config
 
+from shadowvendor.core.parsing import format_mac_address, is_mac_address, read_opening_lines
+
 console = Console()
 VERBOSE = os.getenv("SHADOWVENDOR_VERBOSE", "0") in ("1", "true", "True")
 
@@ -38,36 +40,6 @@ def check_dependencies():
             console.print(f"[bold red]Error:[/bold red] Required module '{module}' is not installed.")
             console.print(f"Please install it using: pip install {module}")
             sys.exit(1)
-
-def is_mac_address(mac: str) -> bool:
-    """
-    Check if a string is a valid MAC address.
-    Supports formats:
-    - 00:11:22:33:44:55
-    - 00-11-22-33-44-55
-    - 0011.2233.4455
-    - 001122334455
-    - D8.C7.C8.14C17B (ARP table format)
-    """
-    if not mac:
-        return False
-        
-    # Remove all separators and spaces
-    mac_clean = mac.strip().lower().replace(':', '').replace('.', '').replace('-', '')
-    
-    # Check if we have enough characters for a MAC address
-    if len(mac_clean) < 12:
-        return False
-    
-    # Take first 12 characters (some formats might have more)
-    mac_clean = mac_clean[:12]
-    
-    # Check if all characters are valid hex
-    try:
-        int(mac_clean, 16)
-        return True
-    except ValueError:
-        return False
 
 def is_mac_address_table(line: str) -> bool:
     """
@@ -111,24 +83,6 @@ def parse_port_info(line: str) -> str:
         return port
     except ValueError:
         return None
-
-def format_mac_address(mac: str) -> str:
-    """
-    Format a MAC address consistently.
-    Input can be any format, output will be xx:xx:xx:xx:xx:xx
-    """
-    if not mac:
-        return None
-        
-    # Remove all separators and spaces
-    mac_clean = mac.strip().lower().replace(':', '').replace('.', '').replace('-', '')
-    
-    # Take first 12 characters
-    if len(mac_clean) >= 12:
-        mac_clean = mac_clean[:12]
-        # Format with colons
-        return ':'.join([mac_clean[i:i+2] for i in range(0, 12, 2)])
-    return None
 
 def main():
     """
@@ -289,8 +243,7 @@ def main():
     
     try:
         with open(input_file, 'r', encoding='utf-8') as f:
-            first_line = f.readline().strip()
-            second_line = f.readline().strip() if first_line else ""
+            first_line, second_line = read_opening_lines(f)
             
             # Debug output for file type detection
             if VERBOSE:

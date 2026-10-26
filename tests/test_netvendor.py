@@ -77,9 +77,17 @@ def test_get_format_type():
     assert get_format_type("VLAN ID  MAC Address      Port") == "hp"
     assert get_format_type("Some other format") == "generic"
 
-def test_oui_manager_cache():
-    """Test OUI manager cache functionality with real MACs from cache."""
-    oui_manager = OUIManager('oui_cache.json')
+def test_oui_manager_cache(tmp_path):
+    """Use an explicit temporary cache, never a live lookup or developer cache."""
+    import json
+    cache_dir = tmp_path / "output" / "data"
+    cache_dir.mkdir(parents=True)
+    (cache_dir / "oui_cache.json").write_text(json.dumps({
+        "00:1B:63": "Apple, Inc.", "00:0E:83": "Cisco Systems, Inc",
+        "00:24:81": "Hewlett Packard", "B8:AC:6F": "Dell Inc.",
+        "00:90:7F": "WatchGuard Technologies, Inc.",
+    }))
+    oui_manager = OUIManager(offline=True)
     # Apple, Inc.
     vendor = oui_manager.get_vendor('00:1B:63:AA:BB:CC')
     assert vendor == 'Apple, Inc.'
@@ -96,9 +104,11 @@ def test_oui_manager_cache():
     vendor = oui_manager.get_vendor('00:90:7F:12:34:56')
     assert vendor == 'WatchGuard Technologies, Inc.'
 
-def test_oui_manager_failed_lookups():
+def test_oui_manager_failed_lookups(monkeypatch):
     """Test OUI manager failed lookups handling with a MAC not in cache."""
-    oui_manager = OUIManager('oui_cache.json')
+    from unittest.mock import Mock
+    monkeypatch.setattr("requests.get", Mock(return_value=Mock(status_code=404)))
+    oui_manager = OUIManager()
     # Use a MAC not in the cache
     mac = 'AA:BB:CC:DD:EE:FF'
     vendor = oui_manager.get_vendor(mac)
@@ -135,4 +145,4 @@ def test_format_mac_address():
     # Invalid formats
     assert format_mac_address("") is None
     assert format_mac_address("invalid") is None
-    assert format_mac_address("00:11:22:33:44") is None 
+    assert format_mac_address("00:11:22:33:44") is None

@@ -7,20 +7,20 @@ import pytest
 from pathlib import Path
 
 @pytest.fixture(autouse=True)
-def setup_test_environment():
-    """Set up a clean test environment for each test."""
-    # Create a temporary directory for test data
-    with tempfile.TemporaryDirectory() as tmpdir:
-        # Set environment variables
-        os.environ["SHADOWVENDOR_DATA_DIR"] = tmpdir
-        os.environ["SHADOWVENDOR_OUTPUT_DIR"] = os.path.join(tmpdir, "output")
-        
-        # Create output directory
-        os.makedirs(os.environ["SHADOWVENDOR_OUTPUT_DIR"], exist_ok=True)
-        
-        yield
-        
-        # Clean up is handled automatically by tempfile.TemporaryDirectory
+def setup_test_environment(tmp_path, monkeypatch):
+    """Isolate caches, configuration, logs, and network access for every test."""
+    import requests
+    from shadowvendor.utils.runtime_logger import reset_logger
+    monkeypatch.chdir(tmp_path)
+    for key in list(os.environ):
+        if key.startswith("SHADOWVENDOR_"):
+            monkeypatch.delenv(key)
+    def no_network(*args, **kwargs):
+        pytest.fail("Unexpected HTTP request: supply an explicit vendor-service mock")
+    monkeypatch.setattr(requests.sessions.Session, "request", no_network)
+    reset_logger()
+    yield
+    reset_logger()
 
 @pytest.fixture
 def sample_mac_addresses():
@@ -173,4 +173,4 @@ def run_bandit_scan():
     except Exception as e:
         raise pytest.UsageError(
             f"Bandit scan error: {str(e)}"
-        ) 
+        )

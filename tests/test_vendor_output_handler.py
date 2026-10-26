@@ -17,10 +17,9 @@ from shadowvendor.utils.vendor_output_handler import (
 from shadowvendor.core.oui_manager import OUIManager
 
 @pytest.fixture
-def temp_output_dir():
-    """Create a temporary directory for test output files."""
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        yield tmp_dir
+def temp_output_dir(tmp_path):
+    """Let pytest clean up after monkeypatch restores cwd, including on Windows."""
+    return str(tmp_path)
 
 @pytest.fixture
 def sample_device_data():

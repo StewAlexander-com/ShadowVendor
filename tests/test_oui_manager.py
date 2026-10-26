@@ -1,177 +1,115 @@
-"""Tests for the OUI Manager module."""
+"""Deterministic coverage of the current cache API, including older disk formats."""
+import json
+from unittest.mock import Mock
 
 import pytest
-import tempfile
-import json
-from pathlib import Path
-from datetime import datetime, timedelta
 from shadowvendor.core.oui_manager import OUIManager
 
-# Skip this suite if legacy database-style API is not present
-import pytest as _pytest
-if not hasattr(OUIManager, 'load_database'):
-    pytestmark = _pytest.mark.skip(reason="OUIManager database API not present; cache-based API in use")
+MAC = "E0:FE:ED:00:00:01"
+OUI = "E0:FE:ED"
 
-@pytest.fixture
-def temp_data_dir():
-    """Create a temporary directory for test data."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        yield Path(tmpdir)
 
-@pytest.fixture
-def oui_manager(temp_data_dir, monkeypatch):
-    """Create an OUIManager instance with a temporary data directory."""
-    def mock_init(self):
-        self.output_dir = temp_data_dir
-        self.data_dir = temp_data_dir / "data"
-        self.data_dir.mkdir(parents=True, exist_ok=True)
-        self.oui_file = self.data_dir / "oui_database.json"
-        self.vendors = {
-            "HP": ["Hewlett Packard", "HP Enterprise", "HP Inc"],
-            "Apple": ["Apple, Inc"],
-            "Dell": ["Dell Inc", "Dell Technologies"],
-            "Cisco": ["Cisco Systems", "Cisco SPVTG"],
-            "Mitel": ["Mitel Networks"],
-        }
-    
-    monkeypatch.setattr(OUIManager, "__init__", mock_init)
-    return OUIManager()
+def test_legacy_failed_list_is_expired(monkeypatch):
+    manager = OUIManager()
+    manager.failed_lookups_file.write_text(json.dumps([OUI]))
+    response = Mock(return_value=Mock(status_code=200, text="Recovered"))
+    monkeypatch.setattr("requests.get", response)
+    assert OUIManager().get_vendor(MAC) == "Recovered"
+    assert response.call_count == 1
+    assert MAC not in response.call_args.args[0]
+    assert response.call_args.args[0].endswith(OUI)
 
-def test_load_database_empty(oui_manager):
-    """Test loading database when file doesn't exist."""
-    database = oui_manager.load_database()
-    assert "last_updated" in database
-    assert "vendors" in database
-    assert all(vendor in database["vendors"] for vendor in oui_manager.vendors)
-    assert all(isinstance(database["vendors"][vendor], list) for vendor in oui_manager.vendors)
 
-def test_load_database_existing(oui_manager):
-    """Test loading existing database."""
-    test_data = {
-        "last_updated": datetime.now().isoformat(),
-        "vendors": {
-            "HP": ["001122", "334455"],
-            "Apple": ["AABBCC"],
-            "Dell": [],
-            "Cisco": ["DDEEFF"],
-            "Mitel": []
-        }
-    }
-    
-    # Create test database file
-    oui_manager.save_database(test_data)
-    
-    # Load and verify
-    loaded_data = oui_manager.load_database()
-    assert loaded_data == test_data
+def test_recent_negative_cache_survives_restart_and_expires(monkeypatch):
+    now = [1000.0]
+    monkeypatch.setattr("shadowvendor.core.oui_manager.time.time", lambda: now[0])
+    response = Mock(return_value=Mock(status_code=404))
+    monkeypatch.setattr("requests.get", response)
+    first = OUIManager()
+    assert first.get_vendor(MAC) is None
+    second = OUIManager()
+    assert second.get_vendor(MAC) is None
+    assert response.call_count == 1
+    assert json.loads(first.failed_lookups_file.read_text()) == {OUI: 1000.0}
+    now[0] += second.FAILED_LOOKUP_TTL
+    response.return_value = Mock(status_code=200, text="Recovered")
+    assert second.get_vendor(MAC) == "Recovered"
+    assert response.call_count == 2
 
-def test_save_database(oui_manager):
-    """Test saving database."""
-    test_data = {
-        "last_updated": datetime.now().isoformat(),
-        "vendors": {
-            "HP": ["001122"],
-            "Apple": ["AABBCC"],
-            "Dell": [],
-            "Cisco": ["DDEEFF"],
-            "Mitel": []
-        }
-    }
-    
-    # Save test data
-    oui_manager.save_database(test_data)
-    
-    # Read file directly and verify
-    with open(oui_manager.oui_file, 'r') as f:
-        saved_data = json.load(f)
-    assert saved_data == test_data
 
-def test_update_database(oui_manager, requests_mock):
-    """Test database update functionality."""
-    # Mock IEEE OUI database response
-    mock_data = """
-    00-11-22   (hex)        Hewlett Packard
-    AA-BB-CC   (hex)        Apple, Inc
-    DD-EE-FF   (hex)        Cisco Systems
-    """
-    requests_mock.get("http://standards-oui.ieee.org/oui/oui.txt", text=mock_data)
-    
-    # Update database
-    assert oui_manager.update_database()
-    
-    # Verify database was updated
-    database = oui_manager.load_database()
-    assert "0011.22" in database["vendors"]["HP"]
-    assert "aabb.cc" in database["vendors"]["Apple"]
-    assert "ddee.ff" in database["vendors"]["Cisco"]
+def test_positive_cache_wins_over_recent_failure(monkeypatch):
+    monkeypatch.setattr("requests.get", Mock(return_value=Mock(status_code=404)))
+    first = OUIManager()
+    assert first.get_vendor(MAC) is None
+    first.cache_file.write_text(json.dumps({OUI.lower(): "Added Vendor"}))
+    assert OUIManager(offline=True).get_vendor(MAC) == "Added Vendor"
 
-def test_check_update_needed_never_updated(oui_manager, monkeypatch):
-    """Test update check when database has never been updated."""
-    # Mock input to always return 'n'
-    monkeypatch.setattr('builtins.input', lambda _: 'n')
-    
-    database = oui_manager.load_database()
-    assert database["last_updated"] == ""
-    assert not oui_manager.check_update_needed()
 
-def test_check_update_needed_recent(oui_manager, monkeypatch):
-    """Test update check with recently updated database."""
-    # Mock input to always return 'n'
-    monkeypatch.setattr('builtins.input', lambda _: 'n')
-    
-    # Create recently updated database
-    test_data = {
-        "last_updated": datetime.now().isoformat(),
-        "vendors": {vendor: [] for vendor in oui_manager.vendors}
-    }
-    oui_manager.save_database(test_data)
-    
-    assert not oui_manager.check_update_needed()
+def test_offline_miss_never_writes_negative_cache():
+    manager = OUIManager(offline=True)
+    for _ in range(10):
+        assert manager.get_vendor(MAC) is None
+    assert not manager.failed_lookups_file.exists()
+    assert not manager.failed_lookups
 
-def test_check_update_needed_old(oui_manager, monkeypatch):
-    """Test update check with old database."""
-    # Mock input to return 'y'
-    monkeypatch.setattr('builtins.input', lambda _: 'y')
-    
-    # Create old database (>30 days)
-    old_date = (datetime.now() - timedelta(days=31)).isoformat()
-    test_data = {
-        "last_updated": old_date,
-        "vendors": {vendor: [] for vendor in oui_manager.vendors}
-    }
-    oui_manager.save_database(test_data)
-    
-    assert oui_manager.check_update_needed()
 
-def test_get_vendor_ouis(oui_manager):
-    """Test retrieving vendor OUIs."""
-    # Add test data to cache
-    test_data = {
-        "001122": "HP",
-        "334455": "HP",
-        "AABBCC": "Apple",
-        "DDEEFF": "Cisco"
-    }
-    oui_manager.cache = test_data
-    
-    # Test getting OUIs for existing vendors
-    hp_ouis = oui_manager.get_vendor_ouis("HP")
-    assert isinstance(hp_ouis, set)
-    assert len(hp_ouis) == 2
-    assert "001122" in hp_ouis
-    assert "334455" in hp_ouis
-    
-    apple_ouis = oui_manager.get_vendor_ouis("Apple")
-    assert len(apple_ouis) == 1
-    assert "AABBCC" in apple_ouis
-    
-    cisco_ouis = oui_manager.get_vendor_ouis("Cisco")
-    assert len(cisco_ouis) == 1
-    assert "DDEEFF" in cisco_ouis
-    
-    # Test getting OUIs for non-existent vendors
-    dell_ouis = oui_manager.get_vendor_ouis("Dell")
-    assert len(dell_ouis) == 0
-    
-    unknown_ouis = oui_manager.get_vendor_ouis("Unknown")
-    assert len(unknown_ouis) == 0 
+def test_cache_key_spellings_are_normalized():
+    manager = OUIManager(offline=True)
+    manager.cache_file.write_text(json.dumps({"e0-feed": "Normalized"}))
+    assert OUIManager(offline=True).get_vendor(MAC) == "Normalized"
+
+
+def test_batch_progress_is_optional_and_cache_avoids_extra_requests(monkeypatch):
+    response = Mock(return_value=Mock(status_code=200, text="Mock Vendor"))
+    monkeypatch.setattr("requests.get", response)
+    manager = OUIManager()
+    expected = {MAC: "Mock Vendor", "E0:FE:ED:00:00:02": "Mock Vendor"}
+    assert manager.batch_lookup_vendors(list(expected)) == expected
+    assert response.call_count == 1
+    progress = Mock()
+    assert manager.batch_lookup_vendors(list(expected), progress) == expected
+    progress.add_task.assert_not_called()
+    assert response.call_count == 1
+
+
+def test_batch_progress_tracks_actual_work(monkeypatch):
+    response = Mock(return_value=Mock(status_code=200, text="Mock Vendor"))
+    monkeypatch.setattr("requests.get", response)
+    progress = Mock()
+    progress.add_task.return_value = 0
+    assert OUIManager().batch_lookup_vendors([MAC], progress) == {MAC: "Mock Vendor"}
+    progress.advance.assert_called_once_with(0)
+
+
+@pytest.mark.parametrize("content", ['["E0:FE:ED"]', '{"E0:FE:ED":"bad timestamp"}', 'not json'])
+def test_bad_or_old_failure_records_do_not_block_cache(content):
+    manager = OUIManager(offline=True)
+    manager.failed_lookups_file.write_text(content)
+    manager.cache_file.write_text(json.dumps({OUI: "Valid"}))
+    assert OUIManager(offline=True).get_vendor(MAC) == "Valid"
+
+
+def test_clear_cache_resets_timed_failures(monkeypatch):
+    monkeypatch.setattr("requests.get", Mock(return_value=Mock(status_code=404)))
+    manager = OUIManager()
+    manager.get_vendor(MAC)
+    manager.clear_cache()
+    assert manager.failed_lookups == set()
+    assert manager._failed_at == {}
+
+
+def test_invalid_mac_never_reaches_vendor_service():
+    manager = OUIManager()
+    assert manager.get_vendor("zzzz.zzzz.zzzz") is None
+    assert manager.get_vendor("00112233445566") is None
+
+
+def test_normalization_does_not_discard_extended_cache_records():
+    manager = OUIManager(offline=True)
+    original = {"e0:fe:ed": "Normalized", "00:1B:C5:00:00/36": "Extended Vendor"}
+    manager.cache_file.write_text(json.dumps(original))
+    restored = OUIManager(offline=True)
+    assert restored.get_vendor(MAC) == "Normalized"
+    restored.save_cache()
+    persisted = json.loads(restored.cache_file.read_text())
+    assert all(persisted[key] == value for key, value in original.items())

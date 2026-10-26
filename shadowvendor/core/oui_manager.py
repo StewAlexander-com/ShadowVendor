@@ -29,8 +29,11 @@ from pathlib import Path
 from typing import Dict, Set, Optional, List
 from rich import print
 from rich.progress import Progress
+from .parsing import format_mac_address
 
 class OUIManager:
+    FAILED_LOOKUP_TTL = 300  # Seconds; transient failures must recover without manual cleanup.
+
     def __init__(self, oui_file: str = None, offline: bool = False):
         """Initialize the OUI manager with pre-seeded cache and API fallback.
 
@@ -42,8 +45,8 @@ class OUIManager:
         self.offline = offline
         self.cache = {}
         self.failed_lookups = set()
+        self._failed_at = {}
         self._file_metadata = None
-        self._load_oui_file()
         
         # Setup user cache directory
         self.output_dir = Path("output")
@@ -95,9 +98,10 @@ class OUIManager:
                         continue
                     parts = line.strip().split('\t')
                     if len(parts) >= 2:
-                        oui = parts[0].strip().lower()
+                        oui = self._normalize_oui(parts[0]) or parts[0].strip()
                         vendor = parts[1].strip()
-                        self.cache[oui] = vendor
+                        if oui and vendor:
+                            self.cache[oui] = vendor
         except Exception as e:
             print(f"Error loading OUI file: {e}")
             
@@ -124,25 +128,14 @@ class OUIManager:
         """Clear the OUI cache."""
         self.cache.clear()
         self.failed_lookups.clear()
+        self._failed_at.clear()
         self._file_metadata = None
         
     def load_preseeded_cache(self):
-        """Load the pre-seeded Wireshark manufacturers database."""
+        """Load manufacturer data using the same normalization as live lookups."""
+        self._load_oui_file()
         if self.oui_file and os.path.exists(self.oui_file):
-            try:
-                with open(self.oui_file, 'r', encoding='utf-8') as f:
-                    for line in f:
-                        if line.startswith('#'):
-                            continue
-                        parts = line.strip().split('\t')
-                        if len(parts) >= 2:
-                            oui = parts[0].strip().lower()
-                            vendor = parts[1].strip()
-                            self.cache[oui] = vendor
-                print(f"Loaded {len(self.cache)} entries from pre-seeded OUI cache")
-            except (json.JSONDecodeError, IOError) as e:
-                print(f"Warning: Could not load pre-seeded cache ({e})")
-                self.cache = {}
+            print(f"Loaded {len(self.cache)} entries from pre-seeded OUI cache")
 
     def load_cache(self):
         """Load user's cached vendor lookups."""
@@ -150,7 +143,13 @@ class OUIManager:
             with open(self.cache_file, 'r', encoding='utf-8') as f:
                 user_cache = json.load(f)
                 # Update cache with user lookups (may override pre-seeded entries)
-                self.cache.update(user_cache)
+                if isinstance(user_cache, dict):
+                    # Preserve extended-prefix records even though lookups use /24.
+                    self.cache.update(user_cache)
+                    for key, vendor in user_cache.items():
+                        oui = self._normalize_oui(key)
+                        if oui and isinstance(vendor, str) and vendor:
+                            self.cache[oui] = vendor
         except (json.JSONDecodeError, IOError):
             pass
 
@@ -178,12 +177,35 @@ class OUIManager:
                 pass  # Silently fail if cache can't be saved
 
     def load_failed_lookups(self):
-        """Load previously failed lookups."""
+        """Read timed failures; legacy untimed lists are expired, not permanent bans."""
+        self.failed_lookups = set()
+        self._failed_at = {}
         try:
-            with open(self.failed_lookups_file, 'r', encoding='utf-8') as f:
-                self.failed_lookups = set(json.load(f))
-        except (json.JSONDecodeError, IOError):
-            self.failed_lookups = set()
+            with self.failed_lookups_file.open(encoding="utf-8") as f:
+                saved = json.load(f)
+            if isinstance(saved, dict):
+                now = time.time()
+                for key, timestamp in saved.items():
+                    oui = self._normalize_oui(key)
+                    if (oui and isinstance(timestamp, (int, float))
+                            and 0 <= now - timestamp < self.FAILED_LOOKUP_TTL):
+                        self.failed_lookups.add(oui)
+                        self._failed_at[oui] = timestamp
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    def _recent_failure(self, oui):
+        timestamp = self._failed_at.get(oui)
+        if timestamp is not None and 0 <= time.time() - timestamp < self.FAILED_LOOKUP_TTL:
+            return True
+        self.failed_lookups.discard(oui)
+        self._failed_at.pop(oui, None)
+        return False
+
+    def _remember_failure(self, oui):
+        self.failed_lookups.add(oui)
+        self._failed_at[oui] = time.time()
+        self.save_failed_lookups()
 
     def save_failed_lookups(self):
         """Save failed lookups with atomic write for cross-platform safety."""
@@ -192,7 +214,7 @@ class OUIManager:
             # This prevents corruption on Windows/Linux/Mac if process is interrupted
             temp_file = self.failed_lookups_file.with_suffix('.tmp')
             with temp_file.open('w', encoding='utf-8') as f:
-                json.dump(list(self.failed_lookups), f)
+                json.dump(self._failed_at, f)
                 f.flush()
                 try:
                     os.fsync(f.fileno())  # Force write to disk (Unix/Windows)
@@ -204,17 +226,20 @@ class OUIManager:
             # Fallback: direct write if atomic rename fails
             try:
                 with self.failed_lookups_file.open('w', encoding='utf-8') as f:
-                    json.dump(list(self.failed_lookups), f)
+                    json.dump(self._failed_at, f)
             except (IOError, OSError, PermissionError):
                 pass  # Silently fail if failed lookups can't be saved
 
+    @staticmethod
+    def _normalize_oui(value):
+        compact = re.sub(r"[.:-]", "", value.strip()).upper()
+        if not re.fullmatch(r"[0-9A-F]{6}", compact):
+            return None
+        return ":".join(compact[i:i + 2] for i in range(0, 6, 2))
+
     def _normalize_mac(self, mac: str) -> str:
-        """Normalize MAC address format for lookups."""
-        # Remove any separators and convert to uppercase
-        mac = re.sub(r'[.:-]', '', mac.upper())
-        # Keep only first 6 characters (OUI portion) and format with colons
-        oui = mac[:6]
-        return f"{oui[:2]}:{oui[2:4]}:{oui[4:]}"
+        normalized = format_mac_address(mac)
+        return normalized[:8].upper() if normalized else None
 
     def _rate_limit(self, service):
         """Implement rate limiting for API calls."""
@@ -238,19 +263,15 @@ class OUIManager:
 
         oui = self._normalize_mac(mac)
         
-        # Check failed lookups first
-        if oui in self.failed_lookups:
-            # Previously failed lookups are treated as unknown
+        if oui is None:
             return None
-            
-        # Check cache
+
+        # A valid cache entry always wins over a previous failure.
         if oui in self.cache:
             return self.cache[oui]
 
-        # In offline mode, never attempt external lookups
-        if getattr(self, "offline", False):
-            self.failed_lookups.add(oui)
-            self.save_failed_lookups()
+        # Offline misses are not evidence that a vendor lookup has failed.
+        if self.offline or self._recent_failure(oui):
             return None
 
         # Try API lookup
@@ -283,8 +304,7 @@ class OUIManager:
                     service['rate_limit'] *= 1.5  # Increase backoff
                     
                 elif response.status_code == 404:  # Not found
-                    self.failed_lookups.add(oui)
-                    self.save_failed_lookups()
+                    self._remember_failure(oui)
                     return None
 
             except (requests.RequestException, json.JSONDecodeError):
@@ -297,40 +317,32 @@ class OUIManager:
                 time.sleep(1)  # Wait before retry cycle
 
         # If all retries failed
-        self.failed_lookups.add(oui)
-        self.save_failed_lookups()
+        self._remember_failure(oui)
         return None
 
     def batch_lookup_vendors(self, macs: List[str], progress: Progress = None) -> Dict[str, str]:
-        """Process MAC addresses in batch, using cache when available."""
+        """Look up every address; a progress display never controls the work."""
         results = {}
         unknown_macs = []
-        
-        # First check cache for all MACs
         for mac in macs:
-            if not mac:
+            oui = self._normalize_mac(mac) if mac else None
+            if oui is None:
                 results[mac] = "Unknown"
-                continue
-                
-            oui = self._normalize_mac(mac)
-            if oui in self.cache:
+            elif oui in self.cache:
                 results[mac] = self.cache[oui]
-            elif oui in self.failed_lookups:
+            elif self._recent_failure(oui):
                 results[mac] = "Unknown"
             else:
                 unknown_macs.append(mac)
-        
-        # Only create progress task if there are actually unknown MACs to look up
-        if unknown_macs and progress:
+
+        task_id = None
+        if unknown_macs and progress is not None:
             task_id = progress.add_task(
-                f"[cyan]Looking up vendors for {len(unknown_macs)} MAC addresses...", 
-                total=len(unknown_macs)
+                f"[cyan]Looking up vendors for {len(unknown_macs)} MAC addresses...",
+                total=len(unknown_macs),
             )
-            
-            # Look up unknown MACs one at a time
-            for mac in unknown_macs:
-                results[mac] = self.get_vendor(mac)
-                if progress:
-                    progress.advance(task_id)
-        
-        return results 
+        for mac in unknown_macs:
+            results[mac] = self.get_vendor(mac)
+            if task_id is not None:
+                progress.advance(task_id)
+        return results

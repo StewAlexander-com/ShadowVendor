@@ -136,3 +136,10 @@ test_empty_history/
 test_history/
 test_verify/
 user_test_output/
+
+# Test runner artifacts and intentionally synthetic regression fixtures
+.coverage
+.pytest_cache/
+!tests/fixtures/
+!tests/fixtures/synthetic/
+!tests/fixtures/synthetic/*

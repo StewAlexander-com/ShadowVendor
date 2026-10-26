@@ -1,193 +1,37 @@
-# ShadowVendor Test Coverage Summary
+# Testing ShadowVendor
 
-**Who should read this**: QA engineers, contributors adding new features, and anyone evaluating test coverage who needs to understand what's tested, how tests are organized, and where to add new tests.
-
-## Overview
-
-This document summarizes test coverage for all ShadowVendor execution paths, ensuring every way users can run the tool is validated with mock data.
-
-## Test Suite Structure
-
-### Execution Path Tests (`tests/test_execution_paths.py`)
-
-**Total Tests**: 20  
-**Status**: ✅ All passing
-
-#### Package Entry Point Tests
-- ✅ `test_package_entry_point_basic()` - Basic `shadowvendor input_file.txt`
-- ✅ `test_module_execution()` - `python3 -m shadowvendor input_file.txt`
-
-#### Standalone Script Tests
-- ✅ `test_standalone_script_basic()` - `python3 ShadowVendor.py input_file.txt` (no flags)
-- ✅ `test_standalone_script_offline()` - `--offline` flag
-- ✅ `test_standalone_script_siem_export()` - `--siem-export` with site/environment
-- ✅ `test_standalone_script_history_drift()` - `--history-dir --analyze-drift`
-- ✅ `test_standalone_script_all_features()` - All flags combined
-
-#### Python API Tests
-- ✅ `test_python_api_basic()` - Basic `analyze_file()` usage
-- ✅ `test_python_api_all_features()` - Full feature set via API
-
-#### Configuration Tests
-- ✅ `test_config_file_ini()` - INI config file loading
-- ✅ `test_config_file_env_override()` - Environment variable override
-- ✅ `test_config_loading_defaults()` - Default config values
-- ✅ `test_config_loading_from_file()` - Config file loading
-- ✅ `test_config_env_override()` - Env var precedence
-
-#### Input Type Tests
-- ✅ `test_mac_list_input()` - MAC list file detection
-- ✅ `test_mac_table_input()` - MAC table file detection
-- ✅ `test_arp_table_input()` - ARP table file detection
-
-#### Error Handling Tests
-- ✅ `test_missing_input_file()` - Missing file error
-- ✅ `test_empty_input_file()` - Empty file error
-- ✅ `test_invalid_input_file()` - Invalid/no MACs error
-
-### Core Functionality Tests
-
-#### `tests/test_shadowvendor.py` (9 tests)
-- MAC address validation
-- MAC address table detection
-- Port information parsing
-- Format type detection
-- OUI manager cache functionality
-- Failed lookups handling
-- File tracking
-- MAC address formatting
-
-#### `tests/test_oui_manager.py` (8 tests - some skipped)
-- Database loading
-- Database saving
-- Update checking
-- Vendor lookups
-
-#### `tests/test_vendor_output_handler.py` (6 tests)
-- CSV generation
-- Port report generation
-- Vendor distribution charts
-- Vendor summary saving
-- Empty data handling
-- Invalid data handling
-
-#### `tests/test_api.py` (7 tests)
-- MAC list analysis
-- MAC table analysis
-- SIEM export
-- History archiving
-- File not found errors
-- Empty file errors
-- No devices errors
-
-## Test Data
-
-All tests use mock data from `tests/data/`:
-- `test-mac-list.txt` - Simple MAC address list
-- `test-mac-table.txt` - MAC address table format
-- `test-arp-table.txt` - ARP table format
-
-Tests also create temporary files and directories to avoid polluting the workspace.
-
-## Coverage Matrix
-
-| Execution Path | Test Function | Mock Data | Status |
-|----------------|---------------|-----------|--------|
-| Package entry (basic) | `test_package_entry_point_basic()` | MAC list | ✅ |
-| Module execution | `test_module_execution()` | MAC list | ✅ |
-| Standalone (basic) | `test_standalone_script_basic()` | MAC table | ✅ |
-| Standalone (offline) | `test_standalone_script_offline()` | MAC table | ✅ |
-| Standalone (SIEM) | `test_standalone_script_siem_export()` | MAC table | ✅ |
-| Standalone (drift) | `test_standalone_script_history_drift()` | MAC table | ✅ |
-| Standalone (all) | `test_standalone_script_all_features()` | MAC table | ✅ |
-| Python API (basic) | `test_python_api_basic()` | MAC list | ✅ |
-| Python API (all) | `test_python_api_all_features()` | MAC table | ✅ |
-| Config (INI) | `test_config_file_ini()` | MAC table | ✅ |
-| Config (env) | `test_config_file_env_override()` | MAC table | ✅ |
-| MAC list input | `test_mac_list_input()` | MAC list | ✅ |
-| MAC table input | `test_mac_table_input()` | MAC table | ✅ |
-| ARP table input | `test_arp_table_input()` | ARP table | ✅ |
-| Error (missing) | `test_missing_input_file()` | N/A | ✅ |
-| Error (empty) | `test_empty_input_file()` | Empty file | ✅ |
-| Error (invalid) | `test_invalid_input_file()` | Invalid file | ✅ |
-| Config defaults | `test_config_loading_defaults()` | N/A | ✅ |
-| Config file | `test_config_loading_from_file()` | Config file | ✅ |
-| Config env | `test_config_env_override()` | Config + env | ✅ |
-
-## Running Tests
-
-### Run all execution path tests:
-```bash
-python3 -m pytest tests/test_execution_paths.py -v
-```
-
-### Run all tests:
-```bash
-python3 -m pytest tests/ -v
-```
-
-### Run specific test:
-```bash
-python3 -m pytest tests/test_execution_paths.py::test_python_api_all_features -v
-```
-
-### Run with coverage:
-```bash
-python3 -m pytest tests/ --cov=shadowvendor --cov-report=html
-```
-
-## Test Validation Checklist
-
-- [x] All execution paths tested
-- [x] All input file types tested (MAC list, MAC table, ARP table)
-- [x] All feature flags tested (offline, SIEM, drift, history)
-- [x] Configuration file support tested
-- [x] Environment variable override tested
-- [x] Error handling tested (missing file, empty file, invalid file)
-- [x] Python API tested
-- [x] Mock data used for all tests
-- [x] Tests isolated (use temporary directories)
-- [x] All tests passing
-
-## Security Testing
-
-ShadowVendor uses **Bandit** for security scanning to detect potential security vulnerabilities and code execution risks.
-
-### Running Security Scans
+Install test tools, then run the isolated suite:
 
 ```bash
-# Install development dependencies
-pip install -r requirements-dev.txt
-
-# Run tests with security scan (recommended)
-pytest --bandit
-
-# Run specific tests with security scan
-pytest tests/test_api.py --bandit -v
-
-# Or run Bandit directly (standalone)
-bandit -c bandit.yaml -r shadowvendor/ ShadowVendor.py
+python -m pip install -e . -r requirements-dev.txt
+python -m pytest tests --bandit -q
 ```
 
-### Security Test Configuration
+Tests use temporary working directories and explicit cache fixtures. Unexpected live HTTP requests fail the test; execution-path tests supply deterministic vendor-service mocks. The cache tests exercise the current API rather than skipping tests for the former database API.
 
-The `bandit.yaml` configuration file:
-- Excludes test directories and output directories from scanning
-- Skips false positives for intentional patterns:
-  - `B110, B112`: Try/except pass/continue (intentional graceful error handling)
-  - `B404, B603, B607`: subprocess usage in `update_oui_cache.py` (trusted source, not user input)
-- Reports all severity levels (low, medium, high)
+## Coverage by behavior
 
-### Current Security Status
+- `test_netvendor.py`: supported MAC representations, validation, ports, cached lookups, and failed lookups.
+- `test_oui_manager.py`: legacy failure-file recovery, five-minute expiry, positive-cache precedence, offline misses, normalized cache keys, progress-independent batch results, request counts, malformed records, and invalid addresses.
+- `test_vendor_output_handler.py`: device/port CSVs, chart documents, summaries, and empty/unknown data.
+- `test_api.py`: input errors, device counts, history, and existence of every reported SIEM file.
+- `test_execution_paths.py`: standalone CLI, installed entry-point function, API, flags, configuration, history, and exports.
+- `test_remediations.py`: 240-device synthetic workflows, output schemas/counts, safe HTML script embedding, headerless input, leading blanks, malformed addresses, case deduplication, batch behavior, cache recovery, and explicit API output routing.
 
-✅ **No security issues identified** - All scans pass with configured exclusions for intentional patterns.
+The synthetic fixtures in `tests/fixtures/synthetic/` contain no captured network inventory. Vendor labels are fictitious cache mappings. `expected.json` records their expected counts.
 
-## Notes
+## Distribution smoke test
 
-- Tests use `tempfile.TemporaryDirectory()` to avoid polluting the workspace
-- Tests mock `sys.argv` to simulate command-line arguments
-- Tests verify output file creation and content
-- OUI manager tests use real OUI cache for vendor lookups
-- Some OUI manager tests are skipped if database update is needed
-- Security scanning with Bandit is part of the quality assurance process
+After installing a non-editable build with `python -m pip install .`, run:
 
+```bash
+python tests/wheel_smoke.py
+```
+
+This launches the installed console command and module from a temporary directory, checks the 240-record output, and verifies that the bundled OUI snapshot is included in the package. The basic entry points retain their file-only interface; use `ShadowVendor.py` for advanced CLI flags.
+
+## Continuous integration and limits
+
+The Tests workflow runs the full suite, configured Bandit scan, and installed-distribution smoke test on Linux with Python 3.9, 3.12, and 3.14, and Windows with Python 3.12. CodeQL runs separately. Inspect the checks for the exact commit rather than treating this document as evidence of a green build.
+
+Bandit exclusions are recorded in `bandit.yaml`; a clean scan is not a claim that all vulnerabilities are absent. HTML tests verify safe script boundaries and JSON round trips. They do not replace interactive browser testing of Plotly rendering. The generated dashboard still loads Plotly from a CDN.
