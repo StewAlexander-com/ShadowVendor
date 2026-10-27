@@ -75,6 +75,26 @@ def test_large_inventory_and_long_names_keep_full_data():
     assert "other vendors are excluded" in html
 
 
+@pytest.mark.parametrize("counts, outline", [
+    ([3, 3, 2, 2, 2], 2),
+    ([99, 1], 2),
+    ([999, 1], 0),
+    ([1] * 1000, 0),
+])
+def test_small_donut_shares_are_not_covered_by_outlines(counts, outline):
+    records = [("10", f"Vendor {i}") for i, count in enumerate(counts) for _ in range(count)]
+    html, charts = generate(records)
+    pie = charts[0]["data"][0]
+    assert pie["marker"]["line"]["width"] == outline
+    assert pie["values"] == sorted(counts, reverse=True)
+    assert len(pie["labels"]) == len(counts)
+    assert len(pie["marker"]["colors"]) == len(counts)
+    assert charts[0]["total"] == sum(counts)
+    assert pie["hole"] == 0.62
+    assert all(f"Vendor {i} ({count:,})" in pie["labels"] for i, count in enumerate(counts))
+    assert all(f">Vendor {i}</button>" in html for i in range(len(counts)))
+
+
 def test_html_data_and_filename_cannot_inject_markup():
     marker = '</script><script>window.unwanted=1</script><img src=x onerror=alert(1)>'
     html, charts = generate([("10", marker)], filename=marker + ".txt")

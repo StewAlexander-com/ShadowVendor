@@ -42,8 +42,11 @@ def render_dashboard(fig1, fig2, vendor_counts, vlan_vendor_data, input_file):
         groups[int(axis[1:] or "1") - 1].append(trace)
     pie = fig1.to_dict()["data"]
     if pie:
+        # A fixed outline can cover narrow wedges entirely, especially at the
+        # donut's inner edge. Keep small shares visible without grouping vendors.
+        outline_width = 0 if min(pie[0]["values"]) / total < 0.01 else 2
         pie[0].update(textinfo="none", hole=0.62, sort=False,
-                      marker={"colors": [colors[v] for v in vendors], "line": {"color": "#192b36", "width": 2}})
+                      marker={"colors": [colors[v] for v in vendors], "line": {"color": "#192b36", "width": outline_width}})
     if groups[0]:
         groups[0][0]["marker"] = {"color": "#b9dcd6"}
         groups[1][0]["marker"] = {"color": "#d9bd8e"}
